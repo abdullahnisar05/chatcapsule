@@ -40,6 +40,8 @@ ChatCapsule is designed around a local-first model:
 - Media lightbox and voice-message playback
 - Graceful parser warnings when individual archive files cannot be read
 - Automated TypeScript unit tests and production route smoke tests in CI
+- Accessible media, playback, search, and mobile navigation controls
+- Explicit blob URL cache cleanup when archives are replaced or the viewer unmounts
 
 ## Project structure
 
@@ -70,8 +72,6 @@ Because Instagram can change its export format, the parser is defensive: unsuppo
 ## Roadmap
 
 - Regenerate and verify dependency lockfile after framework security updates
-- Accessibility and keyboard-navigation pass
-- Split the archive viewer into smaller feature components
 - Export selected conversations
 - Performance benchmarks for very large archives
 
