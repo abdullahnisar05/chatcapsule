@@ -33,8 +33,20 @@ jobs:
       - name: Search benchmark
         run: npm run benchmark:search
 
+      - name: Archive import benchmark
+        run: npm run benchmark:import
+
       - name: Production build
         run: npm run build
+
+      - name: Browser E2E dependencies
+        run: npm install --no-save --no-package-lock playwright@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser E2E
+        run: npm run test:e2e
 
       - name: Production smoke test
         run: node scripts/smoke-test.mjs
