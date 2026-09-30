@@ -20,6 +20,7 @@
     "../src/lib/archive-schemas.ts",
     "../src/lib/search-index.ts",
     "../src/lib/archive-reader.ts",
-    "../src/types/chat.ts"
+    "../src/types/chat.ts",
+    "../src/lib/message-loader.ts"
   ]
 }
