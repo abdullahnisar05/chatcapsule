@@ -18,6 +18,7 @@ type ChatTimelineProps = {
   searchResults: string[];
   searchResultIndex: number;
   isParsingMessages: boolean;
+  messageLoadProgress: number;
   parseWarning: string | null;
   zip: JSZip | null;
   virtualListRef: React.RefObject<VirtualMessageListHandle | null>;
@@ -48,6 +49,7 @@ export const ChatTimeline = React.memo(function ChatTimeline({
   searchResults,
   searchResultIndex,
   isParsingMessages,
+  messageLoadProgress,
   parseWarning,
   zip,
   virtualListRef,
@@ -71,6 +73,12 @@ export const ChatTimeline = React.memo(function ChatTimeline({
         <div className="flex h-full flex-col items-center justify-center gap-2" role="status" aria-live="polite" aria-label="Loading conversation messages">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">Loading messages...</p>
+          <div className="w-56 max-w-full" aria-hidden="true">
+            <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="h-full rounded-full bg-blue-500 transition-[width] duration-150" style={{ width: messageLoadProgress + '%' }} />
+            </div>
+          </div>
+          <p className="text-xs tabular-nums text-muted-foreground">{messageLoadProgress}%</p>
         </div>
       ) : messages.length === 0 ? (
         <div className="flex h-full items-center justify-center px-6 text-center" role="status">
