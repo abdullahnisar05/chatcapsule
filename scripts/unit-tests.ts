@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import { strict as assert } from 'node:assert';
 import { chatExportSchema } from '../src/lib/archive-schemas';
 import { fixMessageEncoding, isSafeHttpUrl } from '../src/lib/utils';
 import { searchEntries } from '../src/lib/search-index';
