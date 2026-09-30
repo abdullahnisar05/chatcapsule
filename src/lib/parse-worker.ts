@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { fixEncoding } from './utils';
+import { chatExportSchema } from './archive-schemas';
 
 self.onmessage = async (e: MessageEvent) => {
     try {
@@ -39,9 +40,11 @@ self.onmessage = async (e: MessageEvent) => {
                     if (!message1File) return;
                     
                     const content = await message1File.async('string');
-                    const data = JSON.parse(content);
+                    const parsedExport = chatExportSchema.safeParse(JSON.parse(content));
+                    if (!parsedExport.success) return;
 
-                    const chatParticipants = (data.participants || []).map((p: any) => ({
+                    const data = parsedExport.data;
+                    const chatParticipants = (data.participants || []).map((p) => ({
                         name: p.name ? fixEncoding(p.name) : 'Unknown'
                     }));
                     const chatTitle = data.title ? fixEncoding(data.title) : chatFolder;
@@ -72,7 +75,7 @@ self.onmessage = async (e: MessageEvent) => {
                         participantCount: chatParticipants.length
                     });
                 } catch (e) {
-                    // silently ignore metadata parse errors for specific folders
+                    // Individual malformed conversations are skipped so one bad folder cannot abort the archive.
                 }
             }));
             
