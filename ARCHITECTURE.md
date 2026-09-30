@@ -38,6 +38,10 @@ ChatImporter owns the application state for the currently selected archive and c
 
 Raw conversation JSON is validated with Zod before being converted into the internal message model. Malformed conversations are skipped with warnings rather than becoming unchecked any data.
 
+### Message loading boundary
+
+`loadChatMessages` is the reusable production parser for a selected conversation. The React hook coordinates cancellation and UI state around that function, allowing the same parser to be benchmarked outside React.
+
 ### Rendering boundary
 
 Long conversations use VirtualMessageList with measured variable-height rows. Only the visible window plus overscan is mounted in the DOM.
