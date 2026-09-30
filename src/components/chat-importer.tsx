@@ -146,7 +146,7 @@ export function ChatImporter() {
     const neededFromEnd = activeMessages.length - msgIndexInAll;
     if (neededFromEnd > visibleCount) {
       setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-      setTimeout(highlight, 50);
+      setTimeout(highlight, 100);
     } else {
       highlight();
     }
