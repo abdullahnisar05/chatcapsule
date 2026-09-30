@@ -50,7 +50,7 @@ class HeightIndex {
   }
 }
 
-const VirtualRow = <T,>({
+const VirtualRow = ({
   index,
   children,
   onMeasure,
@@ -59,8 +59,10 @@ const VirtualRow = <T,>({
   children: React.ReactNode;
   onMeasure: (index: number, element: HTMLDivElement | null) => void;
 }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const element = document.querySelector<HTMLDivElement>(`[data-virtual-index="${index}"]`);
+    const element = rowRef.current;
     if (!element) return;
 
     onMeasure(index, element);
@@ -74,7 +76,7 @@ const VirtualRow = <T,>({
   }, [index, onMeasure]);
 
   return (
-    <div data-virtual-index={index}>
+    <div ref={rowRef}>
       {children}
     </div>
   );
@@ -134,7 +136,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
 
   const updateRange = useCallback((top: number, height: number) => {
     const safeHeight = Math.max(1, height);
-    const overscanPx = safeHeight * 2;
+    const overscanPx = Math.max(estimatedItemHeight, overscan * estimatedItemHeight);
     const start = items.length
       ? Math.max(0, findIndexAtOffset(Math.max(0, top - overscanPx)))
       : 0;
@@ -146,7 +148,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
     setScrollState({ top, height: safeHeight });
 
     return { start, end };
-  }, [findIndexAtOffset, items.length]);
+  }, [estimatedItemHeight, findIndexAtOffset, items.length, overscan]);
 
   const measure = useCallback(
     (index: number, element: HTMLDivElement | null) => {
