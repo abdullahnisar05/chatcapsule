@@ -86,7 +86,7 @@ export const MessageBubble = React.memo(({
                                     ? `You replied to ${message.reply.sender || 'them'}`
                                     : `${message.sender_name} replied to you`}
                             </span>
-                        </div>
+                        </button>
                         {(message.reply.message || typeof message.reply.message === 'string') && (
                             <button
                                 type="button"
