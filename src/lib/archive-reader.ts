@@ -64,13 +64,13 @@ export async function buildChatIndex(
         const latestMessage = data.messages?.[0];
 
         let preview = 'No messages';
-        let lastMessageTimestamp = Date.now();
+        let lastMessageTimestamp = 0;
 
         if (latestMessage) {
           lastMessageTimestamp =
             typeof latestMessage.timestamp_ms === 'number'
               ? latestMessage.timestamp_ms
-              : Date.now();
+              : 0;
 
           if (latestMessage.sender_name) {
             const sender = fixEncoding(latestMessage.sender_name);
