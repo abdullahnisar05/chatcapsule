@@ -121,7 +121,7 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
                 const isLastSlot = i === maxDisplay - 1 && remaining > 0;
 
                 return (
-                    <div key={i} style={itemStyle} onClick={() => onImageClick?.(i)} className={cn(onImageClick && "cursor-pointer hover:opacity-95 transition-opacity")}>
+                    <button type="button" key={i} style={itemStyle} onClick={() => onImageClick?.(i)} className={cn(onImageClick && "cursor-pointer hover:opacity-95 transition-opacity", "text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white")} aria-label={"Open archived photo " + (i + 1)}>
                         <img
                             src={url}
                             alt={`Photo ${i + 1}`}
