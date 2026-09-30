@@ -22,6 +22,7 @@
     "../src/lib/archive-reader.ts",
     "../src/types/chat.ts",
     "../src/lib/message-loader.ts",
-    "../src/lib/abort.ts"
+    "../src/lib/abort.ts",
+    "../src/lib/conversation-export.ts"
   ]
 }
