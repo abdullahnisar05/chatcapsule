@@ -266,6 +266,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
   return (
     <div
       ref={containerRef}
+      data-testid="virtual-message-list"
       className={className}
       onScroll={handleScroll}
     >
