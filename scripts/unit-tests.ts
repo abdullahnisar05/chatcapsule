@@ -1,8 +1,10 @@
 import { chatExportSchema } from '../src/lib/archive-schemas';
 import { fixMessageEncoding, isSafeHttpUrl } from '../src/lib/utils';
 import { searchEntries } from '../src/lib/search-index';
+import JSZip from 'jszip';
+import { buildChatIndex } from '../src/lib/archive-reader';
 
-type Check = () => void;
+type Check = () => void | Promise<void>;
 
 const equal = (actual: unknown, expected: unknown, label: string) => {
   if (actual !== expected) throw new Error(label + ': expected ' + String(expected) + ', received ' + String(actual));
@@ -20,12 +22,12 @@ const deepEqual = (actual: unknown, expected: unknown, label: string) => {
   }
 };
 
-function test(name: string, fn: Check): void {
-  fn();
+async function test(name: string, fn: Check): Promise<void> {
+  await fn();
   console.log('✓ ' + name);
 }
 
-test('accepts a minimal Instagram archive shape', () => {
+void test('accepts a minimal Instagram archive shape', () => {
   const result = chatExportSchema.safeParse({
     title: 'Demo chat',
     participants: [{ name: 'Maya Chen' }, { name: 'Alex Rivera' }],
@@ -35,7 +37,7 @@ test('accepts a minimal Instagram archive shape', () => {
   equal(result.success, true, 'schema should accept a valid archive');
 });
 
-test('rejects malformed participant entries', () => {
+void test('rejects malformed participant entries', () => {
   const result = chatExportSchema.safeParse({
     participants: [{ name: 123 }],
     messages: [],
@@ -44,7 +46,7 @@ test('rejects malformed participant entries', () => {
   equal(result.success, false, 'schema should reject malformed participants');
 });
 
-test('normalizes second-based timestamps without mutating the input', () => {
+void test('normalizes second-based timestamps without mutating the input', () => {
   const original = {
     sender_name: 'Maya Chen',
     timestamp_ms: 1_750_000_000,
@@ -61,7 +63,7 @@ test('normalizes second-based timestamps without mutating the input', () => {
   notEqual(normalized, original, 'normalization should return a new object');
 });
 
-test('normalizes second-based timestamps from the legacy timestamp field', () => {
+void test('normalizes second-based timestamps from the legacy timestamp field', () => {
   const normalized = fixMessageEncoding({
     sender_name: 'Maya Chen',
     timestamp: 1_750_000_000,
@@ -71,7 +73,7 @@ test('normalizes second-based timestamps from the legacy timestamp field', () =>
   equal(normalized.timestamp_ms, 1_750_000_000_000, 'legacy timestamp should normalize to milliseconds');
 });
 
-test('accepts only HTTP(S) URLs', () => {
+void test('accepts only HTTP(S) URLs', () => {
   equal(isSafeHttpUrl('https://instagram.com/p/abc'), true, 'https URL should be accepted');
   equal(isSafeHttpUrl('http://example.com'), true, 'http URL should be accepted');
   equal(isSafeHttpUrl('javascript:alert(1)'), false, 'javascript URL should be rejected');
@@ -79,7 +81,7 @@ test('accepts only HTTP(S) URLs', () => {
   equal(isSafeHttpUrl('not a url'), false, 'invalid URL should be rejected');
 });
 
-test('search is case-insensitive and returns matching message IDs', () => {
+void test('search is case-insensitive and returns matching message IDs', () => {
   const entries = [
     { id: 'm1', text: 'Meeting at 8 PM' },
     { id: 'm2', text: 'see you tomorrow' },
@@ -91,4 +93,56 @@ test('search is case-insensitive and returns matching message IDs', () => {
   deepEqual(searchEntries(entries, '   '), [], 'blank queries should return no results');
 });
 
-console.log('All ChatCapsule unit tests passed.');
+void test('indexes readable conversations and reports malformed conversation files', async () => {
+  const zip = new JSZip();
+
+  zip.file(
+    'your_activity/inbox/alex_rivera/message_1.json',
+    JSON.stringify({
+      title: 'Alex Rivera',
+      participants: [{ name: 'Alex Rivera' }, { name: 'Maya Chen' }],
+      messages: [{ sender_name: 'Maya Chen', timestamp_ms: 1_750_000_000_000, content: 'Hello' }],
+    }),
+  );
+
+  zip.file(
+    'your_activity/inbox/broken_participant/message_1.json',
+    JSON.stringify({
+      title: 'Broken',
+      participants: [{ name: 123 }],
+      messages: [],
+    }),
+  );
+
+  zip.file(
+    'your_activity/inbox/broken_json/message_1.json',
+    '{ invalid json',
+  );
+
+  const result = await buildChatIndex(zip);
+
+  equal(result.chats.length, 1, 'only the readable conversation should be indexed');
+  equal(result.warnings.length, 2, 'both malformed conversations should be reported');
+});
+
+void test('fails clearly when no readable conversations remain', async () => {
+  const zip = new JSZip();
+  zip.file('your_activity/inbox/broken/message_1.json', '{ invalid json');
+
+  let message = '';
+  try {
+    await buildChatIndex(zip);
+  } catch (error) {
+    message = error instanceof Error ? error.message : String(error);
+  }
+
+  equal(
+    message,
+    'No readable conversations were found. The archive may be incomplete or use an unsupported Instagram export format.',
+    'empty readable archive should have a clear error',
+  );
+});
+
+Promise.all([]).then(() => {
+  console.log('All ChatCapsule unit tests passed.');
+});
