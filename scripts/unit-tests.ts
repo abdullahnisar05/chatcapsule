@@ -4,6 +4,7 @@ import { searchEntries } from '../src/lib/search-index';
 import JSZip from 'jszip';
 import { buildChatIndex } from '../src/lib/archive-reader';
 import { loadChatMessages } from '../src/lib/message-loader';
+import { formatConversationText, getConversationExportFilename } from '../src/lib/conversation-export';
 
 type Check = () => void;
 
@@ -230,6 +231,57 @@ testAsync('aborts message loading before parsing files', async () => {
   }
 
   equal(aborted, true, 'aborted message loading should throw AbortError');
+});
+
+
+test('formats a portable conversation export with message metadata', () => {
+  const exportText = formatConversationText({
+    title: 'Maya & Alex',
+    participants: ['Maya Chen', 'Alex Rivera'],
+    messages: [
+      {
+        id: 'm1',
+        sender_name: 'Maya Chen',
+        timestamp_ms: 1750000000000,
+        content: 'Hello',
+        type: 'Generic',
+        is_unsent: false,
+        reactions: [{ actor: 'Alex Rivera', reaction: '❤️' }],
+      },
+      {
+        id: 'm2',
+        sender_name: 'Alex Rivera',
+        timestamp_ms: 1750000001000,
+        type: 'Generic',
+        is_unsent: false,
+        photos: [{ uri: 'photos/1.jpg', creation_timestamp: 0 }],
+        reply: { sender: 'Maya Chen', message: 'Hello', timestamp: 1750000000000 },
+      },
+      {
+        id: 'm3',
+        sender_name: 'Maya Chen',
+        timestamp_ms: 1750000002000,
+        type: 'Generic',
+        is_unsent: true,
+      },
+    ],
+  });
+
+  equal(exportText.includes('Participants: Maya Chen, Alex Rivera'), true, 'export should include participants');
+  equal(exportText.includes('Hello'), true, 'export should include text');
+  equal(exportText.includes('[Photo]'), true, 'export should describe photo attachments');
+  equal(exportText.includes('↳ Reply: Hello'), true, 'export should include reply previews');
+  equal(exportText.includes('Reactions: Alex Rivera → ❤️'), true, 'export should include reactions');
+  equal(exportText.includes('Message unsent'), true, 'export should preserve unsent state');
+  equal(exportText.endsWith('\n'), true, 'export should end with a newline');
+});
+
+test('creates filesystem-safe export filenames', () => {
+  equal(
+    getConversationExportFilename('Project: Launch / May?'),
+    'Project Launch May-chatcapsule.txt',
+    'export filename should remove filesystem-illegal characters',
+  );
 });
 
 Promise.all(pendingTests).then(() => {
