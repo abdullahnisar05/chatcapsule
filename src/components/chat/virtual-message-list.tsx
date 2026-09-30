@@ -256,10 +256,14 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
           safeTarget = maxScrollTop * positionRatio;
         }
 
-        container.scrollTo({
-          top: safeTarget,
-          behavior,
-        });
+        if (isFarJump) {
+          container.scrollTop = safeTarget;
+        } else {
+          container.scrollTo({
+            top: safeTarget,
+            behavior,
+          });
+        }
         updateRange(safeTarget, container.clientHeight);
       },
       scrollToBottom(behavior = 'auto') {
