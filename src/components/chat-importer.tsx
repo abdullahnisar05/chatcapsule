@@ -12,6 +12,7 @@ import { Chat, MediaFile } from '@/types/chat';
 import { useChatLoader } from '@/hooks/use-chat-loader';
 import { buildChatIndex } from '@/lib/archive-reader';
 import { isAbortError } from '@/lib/abort';
+import { downloadConversationText } from '@/lib/conversation-export';
 import { clearBlobCache } from '@/lib/blob-cache';
 import { DEMO_CHAT, DEMO_MESSAGES, DEMO_USER } from '@/lib/demo-data';
 import { ChatSidebar } from './chat/chat-sidebar';
@@ -39,6 +40,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   const [searchIndexReady, setSearchIndexReady] = useState(false);
   const [lightboxData, setLightboxData] = useState<{ mediaFiles: MediaFile[]; index: number } | null>(null);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -255,6 +257,22 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     scrollToSearchResult(previousIndex);
   };
 
+  const handleExport = () => {
+    if (!selectedChat || displayMessages.length === 0 || isParsingMessages) return;
+
+    try {
+      downloadConversationText(
+        selectedChat.title,
+        selectedChat.participants.map((participant) => participant.name),
+        displayMessages,
+      );
+      setExportStatus('Conversation exported as a text file.');
+    } catch (error) {
+      console.error('Failed to export conversation:', error);
+      setExportStatus('The conversation could not be exported.');
+    }
+  };
+
   const processFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.zip')) {
       setError('Please upload a valid Instagram chat .zip file.');
@@ -465,9 +483,28 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
                 setMessageSearchTerm('');
                 setShowHeaderSearch(false);
               }}
+              onExport={handleExport}
+              exportDisabled={isParsingMessages || displayMessages.length === 0}
             />
 
-            {importWarning && (
+            {(importWarning || exportStatus) && (
+              <div className="mx-4 mt-3 space-y-2">
+                {importWarning && (
+                  <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-100" role="status">
+                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                    <AlertTitle>Archive warning</AlertTitle>
+                    <AlertDescription>{importWarning}</AlertDescription>
+                  </Alert>
+                )}
+                {exportStatus && (
+                  <Alert className="border-white/10 bg-surface-container-low text-on-surface" role="status" aria-live="polite">
+                    <AlertDescription>{exportStatus}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            {false && importWarning && (
               <Alert className="mx-4 mt-3 border-amber-500/30 bg-amber-500/10 text-amber-100" role="status">
                 <AlertCircle className="h-4 w-4" aria-hidden="true" />
                 <AlertTitle>Archive warning</AlertTitle>
