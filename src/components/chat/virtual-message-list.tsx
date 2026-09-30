@@ -294,4 +294,3 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
   props: Props<T> & { ref?: React.Ref<VirtualMessageListHandle> }
 ) => React.ReactElement;
 
-VirtualMessageList.displayName = 'VirtualMessageList';
