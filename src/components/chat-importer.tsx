@@ -165,10 +165,10 @@ export function ChatImporter() {
   const goToNextMatch = () => {
     if (searchResults.length === 0) return;
     const nextIndex = (searchResultIndex + 1) % searchResults.length;
-    const ts = searchResults[nextIndex];
+    const id = searchResults[nextIndex];
 
     // Auto-expand visible messages if match is beyond current view
-    const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === ts);
+    const msgIndexInAll = activeMessages.findIndex(m => m.id === id);
     const neededFromEnd = activeMessages.length - msgIndexInAll;
     if (neededFromEnd > visibleCount) {
       setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
@@ -182,7 +182,7 @@ export function ChatImporter() {
   const goToPrevMatch = () => {
     if (searchResults.length === 0) return;
     const prevIndex = (searchResultIndex - 1 + searchResults.length) % searchResults.length;
-    const ts = searchResults[prevIndex];
+    const id = searchResults[prevIndex];
 
     const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === ts);
     const neededFromEnd = activeMessages.length - msgIndexInAll;
@@ -477,8 +477,8 @@ export function ChatImporter() {
                     );
 
                     const isLastMessage = index === messagesToRender.length - 1;
-                    const isSearchResult = searchResults.includes(msg.timestamp_ms);
-                    const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === msg.timestamp_ms;
+                    const isSearchResult = searchResults.includes(msg.id);
+                    const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === msg.id;
                     const showSeenStatus = isMainUser && isLastMessage && selectedChat.participantCount === 2;
 
                     return (
@@ -516,7 +516,7 @@ export function ChatImporter() {
                 <Smile className="h-6 w-6 text-on-surface-variant cursor-pointer hover:text-on-surface transition-colors" />
                 <input
                   type="text"
-                  placeholder="Message..."
+                  placeholder="Archived conversation — replies are disabled"
                   readOnly
                   className="flex-1 bg-transparent border-none focus:outline-none text-sm text-on-surface placeholder:text-on-surface-variant min-h-[32px]"
                 />
