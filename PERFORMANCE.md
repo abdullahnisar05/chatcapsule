@@ -33,6 +33,12 @@ It reports:
 
 These numbers are machine-dependent. They are intended for regression detection and portfolio evidence, not as universal browser performance claims.
 
+## Browser verification
+
+Run the browser suite with the Playwright test runner installed. CI installs Playwright transiently so the production dependency lockfile stays focused on the application runtime.
+
+The E2E suite uses Chromium and records an HTML report on CI failures.
+
 ## What is not measured yet
 
 The current benchmark does not represent:
@@ -43,4 +49,4 @@ The current benchmark does not represent:
 - DOM/paint cost on a specific phone
 - end-to-end import time
 
-A future performance pass should add real-export fixtures and browser profiling for those paths.
+Phase 8 adds browser coverage using generated Instagram-style ZIP fixtures, including a 5,000-message conversation. The browser suite verifies upload, conversation rendering, in-chat search, and the windowed DOM.

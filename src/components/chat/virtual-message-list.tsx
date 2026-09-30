@@ -244,10 +244,27 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
           target = itemTop - container.clientHeight + itemHeight;
         }
 
-        container.scrollTo({
-          top: Math.max(0, target),
-          behavior: options.behavior ?? 'smooth',
-        });
+        const currentIndex = items.length ? findIndexAtOffset(container.scrollTop) : safeIndex;
+        const isFarJump = Math.abs(safeIndex - currentIndex) > 200;
+        const behavior = isFarJump ? 'auto' : (options.behavior ?? 'smooth');
+
+        let safeTarget = Math.max(0, target);
+
+        if (isFarJump && items.length > 1) {
+          const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+          const positionRatio = safeIndex / (items.length - 1);
+          safeTarget = maxScrollTop * positionRatio;
+        }
+
+        if (isFarJump) {
+          container.scrollTop = safeTarget;
+        } else {
+          container.scrollTo({
+            top: safeTarget,
+            behavior,
+          });
+        }
+        updateRange(safeTarget, container.clientHeight);
       },
       scrollToBottom(behavior = 'auto') {
         const container = containerRef.current;
@@ -255,7 +272,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
         container.scrollTo({ top: container.scrollHeight, behavior });
       },
     }),
-    [estimatedItemHeight, getOffset, items.length]
+    [estimatedItemHeight, findIndexAtOffset, getOffset, items.length, updateRange]
   );
 
   const visibleItems = useMemo(
@@ -266,6 +283,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
   return (
     <div
       ref={containerRef}
+      data-testid="virtual-message-list"
       className={className}
       onScroll={handleScroll}
     >
