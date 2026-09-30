@@ -8,6 +8,6 @@ export function searchEntries(entries: SearchEntry[], query: string): string[] {
   if (!normalizedQuery) return [];
 
   return entries
-    .filter((entry) => entry.text.includes(normalizedQuery))
+    .filter((entry) => entry.text.toLowerCase().includes(normalizedQuery))
     .map((entry) => entry.id);
 }
