@@ -454,7 +454,7 @@ export function ChatImporter() {
                         "text-[12px] whitespace-nowrap font-medium min-w-[50px] text-right",
                         searchResults.length === 0 && "text-red-400"
                       )}>
-                        {searchResults.length > 0 ? `${searchResultIndex + 1}/${searchResults.length.toLocaleString()}` : 'No results'}
+                        {!searchIndexReady ? 'Indexing…' : searchResults.length > 0 ? `${searchResultIndex + 1}/${searchResults.length.toLocaleString()}` : 'No results'}
                       </span>
                       <div className="w-[1px] h-full bg-zinc-700 mx-1" />
                       <div className="flex items-center">
