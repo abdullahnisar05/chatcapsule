@@ -287,6 +287,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     setLoadingProgress(0);
     setError(null);
     setImportWarning(null);
+    setExportStatus(null);
     setMessageSearchTerm('');
     setSearchTerm('');
 
