@@ -59,7 +59,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     [allChats, selectedChatId]
   );
 
-  const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(
+  const { activeMessages, isParsingMessages, parseWarning, messageLoadProgress } = useChatLoader(
     demo ? undefined : selectedChat
   );
   const displayMessages = demo ? DEMO_MESSAGES : activeMessages;
@@ -451,6 +451,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
               searchResults={searchResults}
               searchResultIndex={searchResultIndex}
               isParsingMessages={isParsingMessages}
+              messageLoadProgress={messageLoadProgress}
               parseWarning={parseWarning}
               zip={zip}
               virtualListRef={virtualListRef}
