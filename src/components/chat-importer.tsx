@@ -164,6 +164,28 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     return map;
   }, [displayMessages]);
 
+  const archiveStats = useMemo(() => {
+    let photoCount = 0;
+    let videoCount = 0;
+    let voiceCount = 0;
+
+    displayMessages.forEach((message) => {
+      photoCount += message.photos?.length ?? 0;
+      videoCount += message.videos?.length ?? 0;
+      voiceCount += message.audio_files?.length ?? 0;
+    });
+
+    return {
+      messageCount: displayMessages.length,
+      participantCount: selectedChat?.participantCount ?? 0,
+      photoCount,
+      videoCount,
+      voiceCount,
+      firstMessageAt: displayMessages[0]?.timestamp_ms ?? 0,
+      lastMessageAt: displayMessages[displayMessages.length - 1]?.timestamp_ms ?? 0,
+    };
+  }, [displayMessages, selectedChat?.participantCount]);
+
   const flashMessage = (id: string) => {
     const el = messageRefs.current.get(id);
     if (!el) return;
@@ -380,7 +402,13 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
               <Avatar className="h-10 w-10"><AvatarFallback className="bg-surface-container-high font-headline">{getInitials(selectedChat.title)}</AvatarFallback></Avatar>
               <div className="flex-1">
                 <h2 className="text-lg font-headline font-semibold truncate" title={selectedChat.title}>{selectedChat.title}</h2>
-                <p className="text-sm text-on-surface-variant">{selectedChat.participantCount} participants</p>
+                <p className="text-sm text-on-surface-variant">
+                  {archiveStats.participantCount} participants
+                  {archiveStats.messageCount > 0 && (
+                    <> · {archiveStats.messageCount.toLocaleString()} messages</>
+                  )}
+                  {demo && <> · Demo archive</>}
+                </p>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className={cn("flex items-center bg-zinc-900/90 border border-zinc-800 rounded-lg transition-all px-3 py-1 overflow-hidden",
