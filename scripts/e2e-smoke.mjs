@@ -42,8 +42,10 @@ const server = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', '
 
 try {
   await waitForServer();
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
 
   await page.goto(baseUrl + '/demo', { waitUntil: 'networkidle' });
   await page.getByText('Demo archive', { exact: false }).waitFor();
@@ -62,11 +64,13 @@ try {
   await page.getByRole('heading', { name: 'Alex Rivera' }).waitFor();
   await page.getByRole('button', { name: 'Search messages in this conversation' }).click();
   await page.getByRole('textbox', { name: 'Find in chat' }).fill('deployment');
-  await page.getByRole('status', { name: '1/1' }).waitFor();
+  await page.getByRole('status').filter({ hasText: '1/1' }).waitFor();
   await page.getByText('Deployment meeting is tomorrow.').waitFor();
 
-  await browser.close();
-  console.log('✓ browser e2e flow passed');
+    console.log('✓ browser e2e flow passed');
+  } finally {
+    await browser?.close();
+  }
 } finally {
   server.kill('SIGTERM');
 }
