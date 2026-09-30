@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Download, Search, X } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,8 @@ type ChatHeaderProps = {
   onPrevMatch: () => void;
   onNextMatch: () => void;
   onCloseSearch: () => void;
+  onExport: () => void;
+  exportDisabled: boolean;
 };
 
 export const ChatHeader = React.memo(function ChatHeader({
@@ -125,9 +127,14 @@ export const ChatHeader = React.memo(function ChatHeader({
           )}
         </div>
         {!messageSearchTerm && !showHeaderSearch && (
-          <Button variant="ghost" size="icon" onClick={onOpenSearch} aria-label="Search messages in this conversation">
-            <Search className="h-5 w-5" aria-hidden="true" />
-          </Button>
+          <>
+            <Button variant="ghost" size="icon" onClick={onExport} disabled={exportDisabled} aria-label="Export conversation as text">
+              <Download className="h-5 w-5" aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onOpenSearch} aria-label="Search messages in this conversation">
+              <Search className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </>
         )}
       </div>
     </header>
