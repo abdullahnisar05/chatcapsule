@@ -61,8 +61,8 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
 
     if (loading || !isVisible) {
         return (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-black/20 p-4 w-48 h-48">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-black/20 p-4 w-48 h-48" role="status" aria-label="Loading photo grid">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
                 <span className="text-xs text-muted-foreground">{count} photos</span>
             </div>
         );
@@ -72,7 +72,16 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
     if (validUrls.length === 0) return null;
 
     if (validUrls.length === 1) {
-        return <img src={validUrls[0]} loading="lazy" onClick={() => onImageClick?.(0)} className={cn("block max-h-[400px] w-auto max-w-full rounded-lg object-contain", onImageClick && "cursor-pointer transition-opacity hover:opacity-90")} alt="User upload" />;
+        return (
+            <button
+                type="button"
+                onClick={() => onImageClick?.(0)}
+                className={cn("block max-h-[400px] w-auto max-w-full rounded-lg overflow-hidden text-left", onImageClick && "cursor-pointer transition-opacity hover:opacity-90")}
+                aria-label="Open archived photo"
+            >
+                <img src={validUrls[0]} loading="lazy" className="block max-h-[400px] w-auto max-w-full rounded-lg object-contain" alt="Archived photo" />
+            </button>
+        );
     }
 
     const gridStyle: React.CSSProperties = {
@@ -108,21 +117,22 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
                     overflow: 'hidden',
                     ...(isFirstInThreeLayout ? { gridRow: '1 / 3' } : {}),
                 };
-
                 const isLastSlot = i === maxDisplay - 1 && remaining > 0;
 
                 return (
-                    <div key={i} style={itemStyle} onClick={() => onImageClick?.(i)} className={cn(onImageClick && "cursor-pointer hover:opacity-95 transition-opacity")}>
+                    <button
+                        type="button"
+                        key={i}
+                        style={itemStyle}
+                        onClick={() => onImageClick?.(i)}
+                        className={cn(onImageClick && "cursor-pointer hover:opacity-95 transition-opacity", "text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white")}
+                        aria-label={"Open archived photo " + (i + 1)}
+                    >
                         <img
                             src={url}
-                            alt={`Photo ${i + 1}`}
+                            alt={"Archived photo " + (i + 1)}
                             loading="lazy"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                display: 'block',
-                            }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                         {isLastSlot && (
                             <div style={{
@@ -133,15 +143,12 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}>
-                                <span style={{
-                                    color: 'white',
-                                    fontSize: '24px',
-                                    fontWeight: 600,
-                                    letterSpacing: '-0.5px',
-                                }}>+{remaining}</span>
+                                <span style={{ color: 'white', fontSize: '24px', fontWeight: 600, letterSpacing: '-0.5px' }}>
+                                    +{remaining}
+                                </span>
                             </div>
                         )}
-                    </div>
+                    </button>
                 );
             })}
         </div>

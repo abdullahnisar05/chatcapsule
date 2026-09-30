@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: 'InstaChat Browser — Private Instagram Chat & DM Viewer',
+    title: 'ChatCapsule — Private Instagram DM Archive',
     description: SITE_DESCRIPTION,
   },
   robots: {
