@@ -53,6 +53,12 @@ export const ChatHeader = React.memo(function ChatHeader({
   onNextMatch,
   onCloseSearch,
 }: ChatHeaderProps) {
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (showHeaderSearch) searchInputRef.current?.focus();
+  }, [showHeaderSearch]);
+
   const mediaSummary = [
     stats.photoCount > 0 ? stats.photoCount + ' photos' : '',
     stats.videoCount > 0 ? stats.videoCount + ' videos' : '',
@@ -82,6 +88,7 @@ export const ChatHeader = React.memo(function ChatHeader({
           messageSearchTerm || showHeaderSearch ? 'w-[220px] sm:w-[380px]' : 'w-0 border-none p-0'
         )}>
           <Input
+            ref={searchInputRef}
             placeholder="Find in chat..."
             aria-label="Find in chat"
             className="h-8 bg-transparent border-none text-sm focus-visible:ring-0 p-0 flex-1 placeholder:text-zinc-500"
@@ -89,7 +96,6 @@ export const ChatHeader = React.memo(function ChatHeader({
             onChange={(event) => onSearchChange(event.target.value)}
             onBlur={onSearchBlur}
             onKeyDown={onSearchKeyDown}
-            autoFocus={showHeaderSearch}
           />
           {messageSearchTerm && (
             <div className="flex items-center gap-2 ml-2 h-5 text-zinc-400">
