@@ -72,7 +72,16 @@ export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: {
     if (validUrls.length === 0) return null;
 
     if (validUrls.length === 1) {
-        return <img src={validUrls[0]} loading="lazy" onClick={() => onImageClick?.(0)} className={cn("block max-h-[400px] w-auto max-w-full rounded-lg object-contain", onImageClick && "cursor-pointer transition-opacity hover:opacity-90")} alt="User upload" />;
+        return (
+            <button
+                type="button"
+                onClick={() => onImageClick?.(0)}
+                className={cn("block max-h-[400px] w-auto max-w-full rounded-lg overflow-hidden text-left", onImageClick && "cursor-pointer transition-opacity hover:opacity-90")}
+                aria-label="Open archived photo"
+            >
+                <img src={validUrls[0]} loading="lazy" className="block max-h-[400px] w-auto max-w-full rounded-lg object-contain" alt="Archived photo" />
+            </button>
+        );
     }
 
     const gridStyle: React.CSSProperties = {
