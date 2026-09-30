@@ -16,6 +16,7 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
         }
 
         let isCancelled = false;
+        const controller = new AbortController();
 
         const run = async () => {
             setIsParsingMessages(true);
@@ -54,6 +55,7 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
 
         return () => {
             isCancelled = true;
+            controller.abort();
         };
     }, [selectedChat]);
 
