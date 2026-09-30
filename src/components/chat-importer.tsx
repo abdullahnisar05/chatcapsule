@@ -46,6 +46,7 @@ export function ChatImporter() {
   const [showHeaderSearch, setShowHeaderSearch] = useState(false);
   const [searchResultIndex, setSearchResultIndex] = useState(-1);
   const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [searchIndexReady, setSearchIndexReady] = useState(false);
   const [lightboxData, setLightboxData] = useState<{ mediaFiles: MediaFile[], index: number } | null>(null);
 
   // Debounced search for better sidebar performance
@@ -58,6 +59,8 @@ export function ChatImporter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const virtualListRef = useRef<VirtualMessageListHandle>(null);
+  const searchWorkerRef = useRef<Worker | null>(null);
+  const searchRequestRef = useRef(0);
 
   const selectedChat = useMemo(() => allChats.find(c => c.id === selectedChatId), [allChats, selectedChatId]);
 
@@ -65,20 +68,98 @@ export function ChatImporter() {
   const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(selectedChat);
 
   useEffect(() => {
-    if (!selectedChat || !activeMessages.length || !messageSearchTerm) {
+    if (!selectedChat || !activeMessages.length) {
+      searchWorkerRef.current?.terminate();
+      searchWorkerRef.current = null;
+      setSearchIndexReady(false);
       setSearchResults([]);
       setSearchResultIndex(-1);
       return;
     }
 
-    const normalizedTerm = messageSearchTerm.toLowerCase();
-    const matches = activeMessages
-      .filter(msg => msg.content?.toLowerCase().includes(normalizedTerm))
-      .map(msg => msg.id);
+    const worker = new Worker(new URL('../lib/search-worker', import.meta.url), { type: 'module' });
+    searchWorkerRef.current = worker;
+    setSearchIndexReady(false);
+    setSearchResults([]);
+    setSearchResultIndex(-1);
 
-    setSearchResults(matches);
-    setSearchResultIndex(matches.length > 0 ? matches.length - 1 : -1);
-  }, [selectedChat, activeMessages, messageSearchTerm]);
+    worker.onmessage = (event) => {
+      const data = event.data;
+
+      if (data?.type === 'READY') {
+        setSearchIndexReady(true);
+        return;
+      }
+
+      if (data?.type === 'RESULTS' && data.requestId === searchRequestRef.current) {
+        const ids = Array.isArray(data.ids) ? data.ids as string[] : [];
+        setSearchResults(ids);
+        setSearchResultIndex(ids.length > 0 ? ids.length - 1 : -1);
+      }
+    };
+
+    worker.onerror = () => {
+      setSearchIndexReady(false);
+      setSearchResults([]);
+      setSearchResultIndex(-1);
+    };
+
+    worker.postMessage({
+      type: 'BUILD',
+      entries: activeMessages
+        .filter(message => !!message.content)
+        .map(message => ({
+          id: message.id,
+          text: message.content!.toLowerCase(),
+        })),
+    });
+
+    return () => {
+      worker.terminate();
+      if (searchWorkerRef.current === worker) {
+        searchWorkerRef.current = null;
+      }
+    };
+  }, [selectedChatId, activeMessages]);
+
+  useEffect(() => {
+    const worker = searchWorkerRef.current;
+
+    if (!worker || !searchIndexReady) {
+      if (!messageSearchTerm) {
+        setSearchResults([]);
+        setSearchResultIndex(-1);
+      }
+      return;
+    }
+
+    const requestId = ++searchRequestRef.current;
+    worker.postMessage({
+      type: 'SEARCH',
+      query: messageSearchTerm,
+      requestId,
+    });
+
+    if (!messageSearchTerm.trim()) {
+      setSearchResults([]);
+      setSearchResultIndex(-1);
+    }
+  }, [messageSearchTerm, searchIndexReady]);
+
+
+  const messageIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    activeMessages.forEach((message, index) => map.set(message.id, index));
+    return map;
+  }, [activeMessages]);
+
+  const messageIndexByTimestamp = useMemo(() => {
+    const map = new Map<number, number>();
+    activeMessages.forEach((message, index) => {
+      if (!map.has(message.timestamp_ms)) map.set(message.timestamp_ms, index);
+    });
+    return map;
+  }, [activeMessages]);
 
   const flashMessage = (id: string) => {
     const el = messageRefs.current.get(id);
@@ -91,7 +172,7 @@ export function ChatImporter() {
   };
 
   const handleReplyClick = (timestamp: number) => {
-    const targetIndex = activeMessages.findIndex(m => m.timestamp_ms === timestamp);
+    const targetIndex = messageIndexByTimestamp.get(timestamp) ?? -1;
     if (targetIndex === -1) return;
 
     const target = activeMessages[targetIndex];
@@ -103,7 +184,7 @@ export function ChatImporter() {
     if (index < 0 || index >= searchResults.length) return;
 
     const id = searchResults[index];
-    const targetIndex = activeMessages.findIndex(message => message.id === id);
+    const targetIndex = messageIndexById.get(id) ?? -1;
     if (targetIndex === -1) return;
 
     virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
