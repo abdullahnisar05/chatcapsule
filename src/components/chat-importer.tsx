@@ -20,6 +20,8 @@ import Twemoji from 'react-twemoji';
 import { cn, isEmojiOnly, fixEncoding, fixMessageEncoding, escapeRegex, getInitials } from '@/lib/utils';
 import { Chat, Message, MediaFile, Share, Reaction, Reply } from '@/types/chat';
 import { useChatLoader } from '@/hooks/use-chat-loader';
+import { buildChatIndex } from '@/lib/archive-reader';
+import { DEMO_CHAT, DEMO_MESSAGES, DEMO_USER } from '@/lib/demo-data';
 
 // --- Modular Chat Components ---
 import { MessageTimestamp, DateDivider, ReactionsDisplay, SystemMessage } from './chat/ui';
@@ -33,11 +35,11 @@ import { VirtualMessageList, VirtualMessageListHandle } from './chat/virtual-mes
 // --- Custom Hooks ---
 
 // --- Main Component ---
-export function ChatImporter() {
-  const [allChats, setAllChats] = useState<Chat[]>([]);
+export function ChatImporter({ demo = false }: { demo?: boolean }) {
+  const [allChats, setAllChats] = useState<Chat[]>(() => demo ? [DEMO_CHAT] : []);
   const [zip, setZip] = useState<JSZip | null>(null);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [mainUser, setMainUser] = useState<string | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(() => demo ? DEMO_CHAT.id : null);
+  const [mainUser, setMainUser] = useState<string | null>(() => demo ? DEMO_USER : null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -65,10 +67,11 @@ export function ChatImporter() {
   const selectedChat = useMemo(() => allChats.find(c => c.id === selectedChatId), [allChats, selectedChatId]);
 
   // USE MODULAR LOADER HOOK
-  const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(selectedChat);
+  const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(demo ? undefined : selectedChat);
+  const displayMessages = demo ? DEMO_MESSAGES : activeMessages;
 
   useEffect(() => {
-    if (!selectedChat || !activeMessages.length) {
+    if (!selectedChat || !displayMessages.length) {
       searchWorkerRef.current?.terminate();
       searchWorkerRef.current = null;
       setSearchIndexReady(false);
@@ -106,7 +109,7 @@ export function ChatImporter() {
 
     worker.postMessage({
       type: 'BUILD',
-      entries: activeMessages
+      entries: displayMessages
         .filter(message => !!message.content)
         .map(message => ({
           id: message.id,
@@ -120,7 +123,7 @@ export function ChatImporter() {
         searchWorkerRef.current = null;
       }
     };
-  }, [selectedChatId, activeMessages]);
+  }, [selectedChatId, displayMessages]);
 
   useEffect(() => {
     const worker = searchWorkerRef.current;
@@ -149,17 +152,17 @@ export function ChatImporter() {
 
   const messageIndexById = useMemo(() => {
     const map = new Map<string, number>();
-    activeMessages.forEach((message, index) => map.set(message.id, index));
+    displayMessages.forEach((message, index) => map.set(message.id, index));
     return map;
-  }, [activeMessages]);
+  }, [displayMessages]);
 
   const messageIndexByTimestamp = useMemo(() => {
     const map = new Map<number, number>();
-    activeMessages.forEach((message, index) => {
+    displayMessages.forEach((message, index) => {
       if (!map.has(message.timestamp_ms)) map.set(message.timestamp_ms, index);
     });
     return map;
-  }, [activeMessages]);
+  }, [displayMessages]);
 
   const flashMessage = (id: string) => {
     const el = messageRefs.current.get(id);
@@ -175,7 +178,7 @@ export function ChatImporter() {
     const targetIndex = messageIndexByTimestamp.get(timestamp) ?? -1;
     if (targetIndex === -1) return;
 
-    const target = activeMessages[targetIndex];
+    const target = displayMessages[targetIndex];
     virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
     window.setTimeout(() => flashMessage(target.id), 250);
   };
@@ -224,55 +227,21 @@ export function ChatImporter() {
     setMainUser(null);
     setZip(null);
 
-    const worker = new Worker(new URL('../lib/parse-worker', import.meta.url), { type: 'module' });
-
     try {
-      // Read the central directory on the main thread (needed later for
-      // on-demand message/media reads) at the same time the worker parses
-      // chat metadata, instead of waiting for one before starting the other.
-      const zipPromise = JSZip.loadAsync(file);
-      const workerPromise = new Promise<any>((resolve, reject) => {
-        worker.onmessage = (e) => {
-          if (e.data?.type === 'PROGRESS') {
-            setLoadingProgress(Math.max(0, Math.min(100, Number(e.data.progress) || 0)));
-            return;
-          }
-
-          if (e.data?.type === 'SUCCESS' || e.data?.type === 'ERROR') {
-            setLoadingProgress(100);
-            resolve(e.data);
-          }
-        };
-        worker.onerror = () => reject(new Error('Failed to parse the ZIP file in the background worker.'));
-      });
-      worker.postMessage(file);
-
-      const [zipInstance, workerData] = await Promise.all([zipPromise, workerPromise]);
+      const zipInstance = await JSZip.loadAsync(file);
       setZip(zipInstance);
+      const { chats, frequentSender } = await buildChatIndex(zipInstance, setLoadingProgress);
 
-      if (workerData.type === 'SUCCESS') {
-        const { chats, frequentSender } = workerData;
-        // Rehydrate messageFiles from names using zipInstance
-        const hydratedChats = chats.map((c: any) => ({
-          ...c,
-          messageFiles: c.messageFileNames.map((name: string) => zipInstance.file(name)).filter(Boolean)
-        }));
-
-        setMainUser(frequentSender);
-        setAllChats(hydratedChats);
-      } else {
-        setError(workerData.error);
-        setZip(null);
-      }
+      setMainUser(frequentSender);
+      setAllChats(chats);
+      if (chats.length > 0) setSelectedChatId(chats[0].id);
     } catch (e: any) {
-      setError(e.message || 'An unexpected error occurred while reading the file.');
+      setError(e?.message || 'An unexpected error occurred while reading the file.');
       setZip(null);
     } finally {
       setIsLoading(false);
-      worker.terminate();
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  };
 
   const triggerFileSelect = () => fileInputRef.current?.click();
 
@@ -498,14 +467,14 @@ export function ChatImporter() {
                   key={selectedChatId}
                   ref={virtualListRef}
                   className="h-full overflow-y-auto p-4 pr-6 scroll-smooth"
-                  items={activeMessages}
-                  initialItemIndex={activeMessages.length - 1}
+                  items={displayMessages}
+                  initialItemIndex={displayMessages.length - 1}
                   estimatedItemHeight={78}
                   overscan={10}
                   getItemKey={(msg) => msg.id}
                   renderItem={(msg, index) => {
-                    const previousMessage = activeMessages[index - 1];
-                    const nextMessage = activeMessages[index + 1];
+                    const previousMessage = displayMessages[index - 1];
+                    const nextMessage = displayMessages[index + 1];
                     const messageDate = new Date(msg.timestamp_ms).toDateString();
                     const previousDate = previousMessage ? new Date(previousMessage.timestamp_ms).toDateString() : null;
                     const nextDate = nextMessage ? new Date(nextMessage.timestamp_ms).toDateString() : null;
@@ -525,7 +494,7 @@ export function ChatImporter() {
                       (msg.content.includes(" removed ") && msg.content.includes(" from the group"))
                     );
 
-                    const isLastMessage = index === activeMessages.length - 1;
+                    const isLastMessage = index === displayMessages.length - 1;
                     const isSearchResult = searchResults.includes(msg.id);
                     const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === msg.id;
                     const showSeenStatus = isMainUser && isLastMessage && selectedChat.participantCount === 2;
