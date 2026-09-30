@@ -90,7 +90,7 @@ const FEATURES = [
   {
     icon: FolderDown,
     title: 'Handles large exports',
-    description: 'Built to stream and lazily load big archives, so even years of chat history stay fast and responsive.',
+    description: 'Uses windowed rendering and lazy media loading to keep long chat histories responsive.',
   },
 ];
 
