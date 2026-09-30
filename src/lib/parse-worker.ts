@@ -53,7 +53,7 @@ self.onmessage = async (e: MessageEvent) => {
                     let preview = "No messages";
                     let lastTs = Date.now();
                     if (lastMessageRaw) {
-                        lastTs = lastMessageRaw.timestamp_ms;
+                        lastTs = typeof lastMessageRaw.timestamp_ms === 'number' ? lastMessageRaw.timestamp_ms : Date.now();
                         if (lastMessageRaw.sender_name) {
                             const sName = fixEncoding(lastMessageRaw.sender_name);
                             senderCounts[sName] = (senderCounts[sName] || 0) + 1;
