@@ -244,10 +244,17 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
           target = itemTop - container.clientHeight + itemHeight;
         }
 
-        const safeTarget = Math.max(0, target);
         const currentIndex = items.length ? findIndexAtOffset(container.scrollTop) : safeIndex;
         const isFarJump = Math.abs(safeIndex - currentIndex) > 200;
         const behavior = isFarJump ? 'auto' : (options.behavior ?? 'smooth');
+
+        let safeTarget = Math.max(0, target);
+
+        if (isFarJump && items.length > 1) {
+          const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+          const positionRatio = safeIndex / (items.length - 1);
+          safeTarget = maxScrollTop * positionRatio;
+        }
 
         container.scrollTo({
           top: safeTarget,
