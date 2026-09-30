@@ -56,3 +56,34 @@ test('real archive upload renders conversation and supports search', async ({ pa
   await expect(page.getByRole('status').filter({ hasText: /1\// })).toBeVisible();
   await expect(page.getByText('Hello from the browser test')).toBeVisible();
 });
+
+test('large conversation keeps the DOM windowed', async ({ page }) => {
+  const messages = Array.from({ length: 5000 }, (_, index) => ({
+    sender_name: index % 2 === 0 ? 'Maya Chen' : 'Alex Rivera',
+    timestamp_ms: 1750000000000 + index * 60000,
+    content: 'Large archive message ' + index,
+  }));
+
+  const zip = new JSZip();
+  zip.file(
+    'your_activity/inbox/alex_rivera/message_1.json',
+    JSON.stringify({
+      title: 'Alex Rivera',
+      participants: [{ name: 'Alex Rivera' }, { name: 'Maya Chen' }],
+      messages,
+    }),
+  );
+
+  await page.goto('/app');
+  await page.locator('input[type="file"]').last().setInputFiles({
+    name: 'large-instagram-export.zip',
+    mimeType: 'application/zip',
+    buffer: await zip.generateAsync({ type: 'nodebuffer' }),
+  });
+
+  await expect(page.getByRole('heading', { name: 'Alex Rivera' }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Large archive message 4999')).toBeVisible();
+
+  const renderedCount = await page.getByTestId('message-bubble').count();
+  expect(renderedCount).toBeLessThan(300);
+});
