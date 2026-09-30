@@ -14,8 +14,7 @@ const STRUCTURED_DATA = {
     {
       '@type': 'Organization',
       '@id': `${SITE_URL}/#kluvox`,
-      name: 'Kluvox',
-      logo: `${SITE_URL}/kluvox-logo.png`,
+      name: 'ChatCapsule',
     },
     {
       '@type': 'WebSite',
@@ -24,7 +23,7 @@ const STRUCTURED_DATA = {
       name: SITE_NAME,
       description: SITE_DESCRIPTION,
       inLanguage: 'en',
-      publisher: { '@id': `${SITE_URL}/#kluvox` },
+      publisher: { '@id': `${SITE_URL}/#chatcapsule` },
     },
     {
       '@type': 'WebApplication',
@@ -35,7 +34,7 @@ const STRUCTURED_DATA = {
       operatingSystem: 'Any (web browser)',
       browserRequirements: 'Requires a modern web browser with JavaScript enabled',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      creator: { '@id': `${SITE_URL}/#kluvox` },
+      creator: { '@id': `${SITE_URL}/#chatcapsule` },
       featureList: [
         'View Instagram chat history from a data export ZIP',
         'Search conversations and messages',
@@ -48,7 +47,7 @@ const STRUCTURED_DATA = {
       name: 'How to view your Instagram DMs from a data export',
       step: [
         { '@type': 'HowToStep', position: 1, name: 'Request your data', text: 'From Instagram, request a download of your data in JSON format and wait for the ZIP export.' },
-        { '@type': 'HowToStep', position: 2, name: 'Upload the ZIP', text: 'Open InstaChat Browser and select the exported .zip file. It is processed entirely on your device.' },
+        { '@type': 'HowToStep', position: 2, name: 'Upload the ZIP', text: 'Open ChatCapsule and select the exported .zip file. It is processed entirely on your device.' },
         { '@type': 'HowToStep', position: 3, name: 'Browse instantly', text: 'Pick any conversation from the list and scroll through it just like the original app.' },
       ],
     },
@@ -127,10 +126,10 @@ export function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
               <MessagesSquare className="h-4 w-4 text-white" />
             </div>
-            <span className="font-headline text-lg font-semibold tracking-tight">InstaChat Browser</span>
+            <span className="font-headline text-lg font-semibold tracking-tight">ChatCapsule</span>
           </div>
           <Button asChild size="sm">
-            <Link href="/app">Open App</Link>
+            <Link href="/app">Try ChatCapsule</Link>
           </Button>
         </div>
       </header>
@@ -267,7 +266,7 @@ export function LandingPage() {
 
       <footer className="border-t border-[#262626] px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-sm text-on-surface-variant sm:flex-row">
-          <span>InstaChat Browser &mdash; not affiliated with Instagram or Meta.</span>
+          <span>ChatCapsule &mdash; not affiliated with Instagram or Meta.</span>
           <span>All processing happens locally in your browser.</span>
         </div>
         <div className="mx-auto mt-6 flex max-w-6xl items-center justify-center gap-1 border-t border-[#262626] pt-6 text-sm text-on-surface-variant">
@@ -275,13 +274,8 @@ export function LandingPage() {
           <span aria-label="love" role="img" className="text-red-500">&hearts;</span> by{' '}
           <span className="inline-flex items-center gap-1.5 font-semibold text-on-surface">
             <Image
-              src="/kluvox-logo.png"
-              alt=""
-              width={20}
-              height={20}
-              className="h-5 w-5 rounded-full ring-1 ring-[#363636]"
-            />
-            Kluvox
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-violet-500 text-[10px] font-bold text-white">C</span>
+            ChatCapsule
           </span>
         </div>
       </footer>
