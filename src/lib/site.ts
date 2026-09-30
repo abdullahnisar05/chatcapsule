@@ -1,41 +1,41 @@
-export const SITE_NAME = 'InstaChat Browser';
+export const SITE_NAME = 'ChatCapsule';
 
 export const SITE_URL = (
-  process.env.URL || 'https://instachatbrowser.netlify.app'
+  process.env.URL || 'https://chatcapsule.netlify.app'
 ).replace(/\/$/, '');
 
 export const SITE_DESCRIPTION =
-  'Free, private Instagram chat viewer. Upload your Instagram data export ZIP and browse your DMs, photos, videos, and voice messages in a familiar chat UI — processed 100% locally in your browser.';
+  'Private Instagram DM archive viewer. Open your Instagram data export in your browser, search conversations, and revisit messages and media without uploading your archive.';
 
 export const FAQS = [
   {
-    question: 'What is InstaChat Browser?',
+    question: 'What is ChatCapsule?',
     answer:
-      'InstaChat Browser is a free, browser-based viewer for Instagram data exports. It turns the ZIP file you download from Instagram into a familiar chat interface so you can read old direct messages, photos, videos, and voice notes.',
+      'ChatCapsule is a free, browser-based viewer for Instagram data exports. It turns the ZIP file you download from Instagram into a searchable chat archive for messages, photos, videos, and voice notes.',
   },
   {
     question: 'How do I view my Instagram DMs from a data export?',
     answer:
-      'In Instagram, go to Accounts Center, choose "Your information and permissions", then "Download your information", and request your messages in JSON format. When the ZIP is ready, download it and upload it to InstaChat Browser to browse every conversation.',
+      'Request your information from Instagram in JSON format, download the resulting ZIP, then open it in ChatCapsule. The archive is processed locally in your browser.',
   },
   {
-    question: 'Is it safe to upload my Instagram ZIP file?',
+    question: 'Does ChatCapsule upload my Instagram ZIP?',
     answer:
-      'Yes. The ZIP is never uploaded to any server. InstaChat Browser reads and renders the archive entirely inside your browser, so your messages and media stay on your device.',
+      'No. ChatCapsule is designed as a local-first viewer: the archive is read and rendered in your browser rather than uploaded to a ChatCapsule server.',
   },
   {
-    question: 'Does InstaChat Browser support photos, videos, and voice messages?',
+    question: 'Does ChatCapsule support photos, videos, and voice messages?',
     answer:
-      'Yes. Photos, videos, stickers, shared links, reactions, and voice messages from the export are displayed inline, and voice notes can be played back with the built-in audio player.',
+      'Yes. Supported exports can include photos, videos, stickers, shared posts, reactions, and voice messages, which ChatCapsule renders in the archive viewer.',
   },
   {
-    question: 'Do I need an account or to install anything?',
+    question: 'Do I need an account or an installation?',
     answer:
-      'No. InstaChat Browser runs in any modern web browser with no sign-up, no login, and no software to install.',
+      'No. ChatCapsule runs in a modern web browser with no sign-up and no software installation.',
   },
   {
-    question: 'Is InstaChat Browser affiliated with Instagram or Meta?',
+    question: 'Is ChatCapsule affiliated with Instagram or Meta?',
     answer:
-      'No. InstaChat Browser is an independent tool made by Kluvox and is not affiliated with, endorsed by, or connected to Instagram or Meta.',
+      'No. ChatCapsule is an independent project and is not affiliated with, endorsed by, or connected to Instagram or Meta.',
   },
 ];
