@@ -26,6 +26,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(() => demo ? DEMO_CHAT.id : null);
   const [mainUser, setMainUser] = useState<string | null>(() => demo ? DEMO_USER : null);
   const [error, setError] = useState<string | null>(null);
+  const [importWarning, setImportWarning] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -261,6 +262,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     setIsLoading(true);
     setLoadingProgress(0);
     setError(null);
+    setImportWarning(null);
     setAllChats([]);
     setSelectedChatId(null);
     setMainUser(null);
@@ -271,7 +273,13 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     try {
       const zipInstance = await JSZip.loadAsync(file);
       setZip(zipInstance);
-      const { chats, frequentSender } = await buildChatIndex(zipInstance, setLoadingProgress);
+      const { chats, frequentSender, warnings } = await buildChatIndex(zipInstance, setLoadingProgress);
+
+      if (warnings.length > 0) {
+        const preview = warnings.slice(0, 2).join(', ');
+        const suffix = warnings.length > 2 ? ' and ' + (warnings.length - 2) + ' more' : '';
+        setImportWarning('Some conversations could not be indexed: ' + preview + suffix + '.');
+      }
 
       setMainUser(frequentSender || null);
       setAllChats(chats);
@@ -405,6 +413,14 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
                 setShowHeaderSearch(false);
               }}
             />
+
+            {importWarning && (
+              <Alert className="mx-4 mt-3 border-amber-500/30 bg-amber-500/10 text-amber-100" role="status">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertTitle>Archive warning</AlertTitle>
+                <AlertDescription>{importWarning}</AlertDescription>
+              </Alert>
+            )}
 
             <ChatTimeline
               chat={selectedChat}
