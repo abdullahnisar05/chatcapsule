@@ -33,6 +33,18 @@ It reports:
 
 These numbers are machine-dependent. They are intended for regression detection and portfolio evidence, not as universal browser performance claims.
 
+## Archive import benchmark
+
+Run:
+
+```bash
+npm run benchmark:import
+```
+
+This generates deterministic, compressed ZIP archives with 10k, 25k, and 50k messages, then measures actual `JSZip` loading, archive indexing, and the production conversation message loader. It reports archive size, indexing time, message-loading time, loaded message count, and process heap delta.
+
+The benchmark is useful for regression detection. It is not a substitute for browser profiling of a real export with real media.
+
 ## What is not measured yet
 
 The current benchmark does not represent:
