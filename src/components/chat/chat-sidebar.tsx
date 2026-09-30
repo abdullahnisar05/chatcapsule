@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Chat } from '@/types/chat';
 import { ChatListItem } from './chat-list-item';
 
-type SidebarChat = Chat & { matchCount?: number; titleMatch?: boolean };
+type SidebarChat = Chat & { matchCount: number };
 
 type ChatSidebarProps = {
   chats: SidebarChat[];
