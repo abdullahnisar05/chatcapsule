@@ -74,9 +74,11 @@ export const MessageBubble = React.memo(({
                         "flex flex-col mb-1 w-fit",
                         isMainUser ? "items-end text-right pr-2.5 border-r-2 border-white/10" : "items-start text-left pl-2.5 border-l-2 border-white/10"
                     )}>
-                        <div
+                        <button
+                            type="button"
                             onClick={() => { if (message.reply && typeof message.reply.timestamp === 'number') onReplyClick(message.reply.timestamp); }}
-                            className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1 cursor-pointer hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1 cursor-pointer hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                            aria-label="Jump to replied message"
                         >
                             <CornerUpLeft className="h-3 w-3" />
                             <span className="font-medium">
@@ -86,17 +88,19 @@ export const MessageBubble = React.memo(({
                             </span>
                         </div>
                         {(message.reply.message || typeof message.reply.message === 'string') && (
-                            <div
+                            <button
+                                type="button"
                                 onClick={() => { if (message.reply && typeof message.reply.timestamp === 'number') onReplyClick(message.reply.timestamp); }}
+                                aria-label="Jump to replied message preview"
                                 className={cn(
-                                    "px-3.5 py-1.5 rounded-2xl text-xs opacity-70 cursor-pointer max-w-full truncate",
+                                    "px-3.5 py-1.5 rounded-2xl text-xs opacity-70 cursor-pointer max-w-full truncate text-left",
                                     isMainUser ? "bg-gray-700" : "bg-blue-600"
                                 )}
                             >
                                 <Twemoji options={{ className: 'emoji' }}>
                                     <span>{message.reply.message}</span>
                                 </Twemoji>
-                            </div>
+                            </button>
                         )}
                     </div>
                 )}
