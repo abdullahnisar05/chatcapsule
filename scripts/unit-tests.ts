@@ -1,6 +1,8 @@
 import { chatExportSchema } from '../src/lib/archive-schemas';
 import { fixMessageEncoding, isSafeHttpUrl } from '../src/lib/utils';
 import { searchEntries } from '../src/lib/search-index';
+import JSZip from 'jszip';
+import { buildChatIndex } from '../src/lib/archive-reader';
 
 type Check = () => void;
 
@@ -23,6 +25,12 @@ const deepEqual = (actual: unknown, expected: unknown, label: string) => {
 function test(name: string, fn: Check): void {
   fn();
   console.log('✓ ' + name);
+}
+
+const pendingTests: Promise<void>[] = [];
+
+function testAsync(name: string, fn: () => Promise<void>): void {
+  pendingTests.push(fn().then(() => console.log('✓ ' + name)));
 }
 
 test('accepts a minimal Instagram archive shape', () => {
@@ -91,4 +99,59 @@ test('search is case-insensitive and returns matching message IDs', () => {
   deepEqual(searchEntries(entries, '   '), [], 'blank queries should return no results');
 });
 
-console.log('All ChatCapsule unit tests passed.');
+testAsync('indexes readable conversations and reports malformed conversation files', async () => {
+  const zip = new JSZip();
+
+  zip.file(
+    'your_activity/inbox/alex_rivera/message_1.json',
+    JSON.stringify({
+      title: 'Alex Rivera',
+      participants: [{ name: 'Alex Rivera' }, { name: 'Maya Chen' }],
+      messages: [{ sender_name: 'Maya Chen', timestamp_ms: 1_750_000_000_000, content: 'Hello' }],
+    }),
+  );
+
+  zip.file(
+    'your_activity/inbox/broken_participant/message_1.json',
+    JSON.stringify({
+      title: 'Broken',
+      participants: [{ name: 123 }],
+      messages: [],
+    }),
+  );
+
+  zip.file(
+    'your_activity/inbox/broken_json/message_1.json',
+    '{ invalid json',
+  );
+
+  const result = await buildChatIndex(zip);
+
+  equal(result.chats.length, 1, 'only the readable conversation should be indexed');
+  equal(result.warnings.length, 2, 'both malformed conversations should be reported');
+});
+
+testAsync('fails clearly when no readable conversations remain', async () => {
+  const zip = new JSZip();
+  zip.file('your_activity/inbox/broken/message_1.json', '{ invalid json');
+
+  let message = '';
+  try {
+    await buildChatIndex(zip);
+  } catch (error) {
+    message = error instanceof Error ? error.message : String(error);
+  }
+
+  equal(
+    message,
+    'No readable conversations were found. The archive may be incomplete or use an unsupported Instagram export format.',
+    'empty readable archive should have a clear error',
+  );
+});
+
+Promise.all(pendingTests).then(() => {
+  console.log('All ChatCapsule unit tests passed.');
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

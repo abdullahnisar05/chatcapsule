@@ -26,6 +26,8 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(() => demo ? DEMO_CHAT.id : null);
   const [mainUser, setMainUser] = useState<string | null>(() => demo ? DEMO_USER : null);
   const [error, setError] = useState<string | null>(null);
+  const [importWarning, setImportWarning] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,9 +250,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     scrollToSearchResult(previousIndex);
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const processFile = async (file: File) => {
 
     if (!file.name.toLowerCase().endsWith('.zip')) {
       setError('Please upload a valid Instagram chat .zip file.');
@@ -261,6 +261,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     setIsLoading(true);
     setLoadingProgress(0);
     setError(null);
+    setImportWarning(null);
     setAllChats([]);
     setSelectedChatId(null);
     setMainUser(null);
@@ -271,7 +272,13 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     try {
       const zipInstance = await JSZip.loadAsync(file);
       setZip(zipInstance);
-      const { chats, frequentSender } = await buildChatIndex(zipInstance, setLoadingProgress);
+      const { chats, frequentSender, warnings } = await buildChatIndex(zipInstance, setLoadingProgress);
+
+      if (warnings.length > 0) {
+        const preview = warnings.slice(0, 2).join(', ');
+        const suffix = warnings.length > 2 ? ' and ' + (warnings.length - 2) + ' more' : '';
+        setImportWarning('Some conversations could not be indexed: ' + preview + suffix + '.');
+      }
 
       setMainUser(frequentSender || null);
       setAllChats(chats);
@@ -286,6 +293,18 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     }
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void processFile(file);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) void processFile(file);
+  };
+
   const triggerFileSelect = () => fileInputRef.current?.click();
 
   const renderInitialView = () => (
@@ -295,10 +314,24 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
           <CardTitle className="text-center text-3xl font-headline tracking-tight text-white">ChatCapsule</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-center space-y-4 p-8 border-2 border-dashed border-gray-600 rounded-lg">
+          <div
+            className={cn(
+              'text-center space-y-4 p-8 border-2 border-dashed rounded-lg transition-colors',
+              isDragActive ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600',
+            )}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragActive(true);
+            }}
+            onDragLeave={() => setIsDragActive(false)}
+            onDrop={handleDrop}
+            role="region"
+            aria-label="Instagram ZIP upload area"
+          >
             <FileUp className="mx-auto h-12 w-12 text-gray-500" aria-hidden="true" />
             <h3 className="text-xl font-semibold text-white">Upload your Instagram Chat ZIP</h3>
             <p className="text-gray-400">Processed entirely on your device. Your archive is never uploaded.</p>
+            <p className="text-xs text-gray-500">Drop a .zip file here or choose one from your device.</p>
             <Input ref={fileInputRef} type="file" accept=".zip,application/zip" onChange={handleFileChange} className="hidden" />
             <Button onClick={triggerFileSelect} aria-label="Select Instagram ZIP file">
               <FileUp className="mr-2 h-4 w-4" aria-hidden="true" /> Select .zip file
@@ -405,6 +438,14 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
                 setShowHeaderSearch(false);
               }}
             />
+
+            {importWarning && (
+              <Alert className="mx-4 mt-3 border-amber-500/30 bg-amber-500/10 text-amber-100" role="status">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertTitle>Archive warning</AlertTitle>
+                <AlertDescription>{importWarning}</AlertDescription>
+              </Alert>
+            )}
 
             <ChatTimeline
               chat={selectedChat}

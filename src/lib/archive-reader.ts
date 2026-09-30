@@ -1,14 +1,14 @@
 import JSZip from 'jszip';
 import { chatExportSchema } from './archive-schemas';
 import { fixEncoding } from './utils';
-import { Chat } from '@/types/chat';
+import { Chat } from '../types/chat';
 
 type ProgressCallback = (progress: number) => void;
 
 export async function buildChatIndex(
   zip: JSZip,
   onProgress?: ProgressCallback,
-): Promise<{ chats: Chat[]; frequentSender: string }> {
+): Promise<{ chats: Chat[]; frequentSender: string; warnings: string[] }> {
   const jsonFiles = Object.values(zip.files).filter(
     (file) => /message_\d+\.json$/.test(file.name) && file.name.includes('/inbox/'),
   );
@@ -39,6 +39,7 @@ export async function buildChatIndex(
     messageFileNames: string[];
   }> = [];
   const senderCounts: Record<string, number> = {};
+  const warnings: string[] = [];
 
   for (let i = 0; i < entries.length; i += 10) {
     const batch = entries.slice(i, i + 10);
@@ -54,7 +55,10 @@ export async function buildChatIndex(
         const content = await message1File.async('string');
         const parsed = chatExportSchema.safeParse(JSON.parse(content));
 
-        if (!parsed.success) continue;
+        if (!parsed.success) {
+          warnings.push(chatFolder + ' (' + message1FileName.split('/').pop() + ')');
+          continue;
+        }
 
         const data = parsed.data;
         const participants = (data.participants ?? []).map((participant) => ({
@@ -95,6 +99,7 @@ export async function buildChatIndex(
         });
       } catch {
         // A single broken conversation should not abort the whole archive.
+        warnings.push(chatFolder + ' (unreadable)');
       }
     }
 
@@ -133,5 +138,11 @@ export async function buildChatIndex(
     })
     .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
 
-  return { chats, frequentSender };
+  if (chats.length === 0) {
+    throw new Error(
+      'No readable conversations were found. The archive may be incomplete or use an unsupported Instagram export format.'
+    );
+  }
+
+  return { chats, frequentSender, warnings };
 }
