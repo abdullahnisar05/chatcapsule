@@ -66,7 +66,7 @@ export function ChatImporter() {
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showHeaderSearch, setShowHeaderSearch] = useState(false);
   const [searchResultIndex, setSearchResultIndex] = useState(-1);
-  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [searchResults, setSearchResults] = useState<string[]>([]);
   const [lightboxData, setLightboxData] = useState<{ mediaFiles: MediaFile[], index: number } | null>(null);
 
   // Debounced search for better sidebar performance
@@ -78,13 +78,13 @@ export function ChatImporter() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedChat = useMemo(() => allChats.find(c => c.id === selectedChatId), [allChats, selectedChatId]);
 
   // USE MODULAR LOADER HOOK
-  const { activeMessages, isParsingMessages } = useChatLoader(selectedChat);
+  const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(selectedChat);
 
   // Load messages on-demand when chat selection changes
   useEffect(() => {
@@ -105,7 +105,7 @@ export function ChatImporter() {
 
     const matches = activeMessages
       .filter(msg => msg.content && msg.content.toLowerCase().includes(messageSearchTerm.toLowerCase()))
-      .map(msg => msg.timestamp_ms);
+      .map(msg => msg.id);
 
     setSearchResults(matches);
     setSearchResultIndex(matches.length > 0 ? matches.length - 1 : -1);
@@ -130,7 +130,7 @@ export function ChatImporter() {
 
   const handleReplyClick = (timestamp: number) => {
     const highlight = () => {
-      const el = messageRefs.current.get(timestamp);
+      const el = messageRefs.current.get(String(timestamp));
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el?.classList.add('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
       setTimeout(() => {
@@ -277,13 +277,13 @@ export function ChatImporter() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-center p-4">
       <Card className="w-full max-w-lg shadow-2xl bg-gray-900 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-center text-3xl font-headline tracking-tight text-white">InstaChat Browser</CardTitle>
+          <CardTitle className="text-center text-3xl font-headline tracking-tight text-white">ChatCapsule</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center space-y-4 p-8 border-2 border-dashed border-gray-600 rounded-lg">
             <FileUp className="mx-auto h-12 w-12 text-gray-500" />
             <h3 className="text-xl font-semibold text-white">Upload your Instagram Chat ZIP</h3>
-            <p className="text-gray-400">Your data is processed entirely in your browser. Nothing is uploaded to any server.</p>
+            <p className="text-gray-400">Processed entirely on your device. Your archive is never uploaded.</p>
             <Input ref={fileInputRef} type="file" accept=".zip" onChange={handleFileChange} className="hidden" suppressHydrationWarning />
             <Button onClick={triggerFileSelect}><FileUp className="mr-2 h-4 w-4" /> Select .zip file</Button>
           </div>
@@ -431,6 +431,13 @@ export function ChatImporter() {
                 }
               }}
             >
+              {parseWarning && !isParsingMessages && (
+                <Alert className="mb-3 border-amber-500/20 bg-amber-500/5 text-amber-100">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Some messages could not be read</AlertTitle>
+                  <AlertDescription>{parseWarning}</AlertDescription>
+                </Alert>
+              )}
               {isParsingMessages ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -475,7 +482,7 @@ export function ChatImporter() {
                     const showSeenStatus = isMainUser && isLastMessage && selectedChat.participantCount === 2;
 
                     return (
-                      <div key={msg.timestamp_ms} ref={(el) => { if (el) messageRefs.current.set(msg.timestamp_ms, el) }}
+                      <div key={msg.id} ref={(el) => { if (el) messageRefs.current.set(msg.id, el) }}
                         className={cn("transition-colors rounded-lg", isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]")}>
                         {showDateDivider && <DateDivider timestamp_ms={msg.timestamp_ms} />}
                         {isSystemMessage ? <SystemMessage content={msg.content!} /> : (
