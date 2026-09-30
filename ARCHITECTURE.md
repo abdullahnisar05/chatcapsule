@@ -50,6 +50,10 @@ Long conversations use VirtualMessageList with measured variable-height rows. On
 
 Search index construction and queries run in a Web Worker. The actual matching algorithm lives in src/lib/search-index.ts, so it is independently testable and benchmarkable.
 
+### Export boundary
+
+`conversation-export.ts` converts the selected conversation's normalized messages into a deterministic plain-text representation. The browser creates a short-lived Blob URL for download; no export payload is sent to a server.
+
 ### Media boundary
 
 Media files are read on demand from the active ZIP. Object URLs are cached per archive and revoked when the active archive changes or the viewer unmounts.

@@ -96,7 +96,7 @@ See [SECURITY.md](./SECURITY.md) for the privacy model and dependency-security p
 
 ## Roadmap
 
-- Export selected conversations
+- Export selected conversations as a portable text file
 - Performance profiling with real large-export fixtures
 - More defensive support for future Instagram export formats
 

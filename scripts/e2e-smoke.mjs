@@ -62,6 +62,15 @@ try {
   });
 
   await page.getByRole('heading', { name: 'Alex Rivera' }).waitFor();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export conversation as text' }).click();
+  const download = await downloadPromise;
+  if (download.suggestedFilename() !== 'Alex Rivera-chatcapsule.txt') {
+    throw new Error('Unexpected export filename: ' + download.suggestedFilename());
+  }
+
+  await page.getByText('Conversation exported as a text file.').waitFor();
   await page.getByRole('button', { name: 'Search messages in this conversation' }).click();
   await page.getByRole('textbox', { name: 'Find in chat' }).fill('deployment');
   await page.getByRole('status').filter({ hasText: '1/1' }).waitFor();
