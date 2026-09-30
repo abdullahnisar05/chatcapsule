@@ -87,14 +87,6 @@ test('large conversation keeps the DOM windowed', async ({ page }) => {
   await search.fill('Large archive message 4999');
   await expect(page.getByRole('status').filter({ hasText: '1/1' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Next search result' }).click();
-  const debug = await page.getByTestId('virtual-message-list').evaluate((element) => ({
-    scrollTop: element.scrollTop,
-    scrollHeight: element.scrollHeight,
-    clientHeight: element.clientHeight,
-    rendered: element.querySelectorAll('[data-testid="message-bubble"]').length,
-    text: Array.from(element.querySelectorAll('[data-testid="message-bubble"] p')).slice(-3).map((node) => node.textContent),
-  }));
-  console.log('large-chat-debug', JSON.stringify(debug));
   await expect(page.getByText('Large archive message 4999').last()).toBeVisible({ timeout: 15_000 });
 
   const renderedCount = await page.getByTestId('message-bubble').count();
