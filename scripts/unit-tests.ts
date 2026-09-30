@@ -3,6 +3,7 @@ import { fixMessageEncoding, isSafeHttpUrl } from '../src/lib/utils';
 import { searchEntries } from '../src/lib/search-index';
 import JSZip from 'jszip';
 import { buildChatIndex } from '../src/lib/archive-reader';
+import { loadChatMessages } from '../src/lib/message-loader';
 
 type Check = () => void;
 
@@ -146,6 +147,38 @@ testAsync('fails clearly when no readable conversations remain', async () => {
     message,
     'No readable conversations were found. The archive may be incomplete or use an unsupported Instagram export format.',
     'empty readable archive should have a clear error',
+  );
+});
+
+
+testAsync('loads and orders messages across archive parts', async () => {
+  const zip = new JSZip();
+  const makeMessageFile = (number: number, messages: unknown[]) => {
+    zip.file(
+      'your_activity/inbox/alex_rivera/message_' + number + '.json',
+      JSON.stringify({
+        title: 'Alex Rivera',
+        participants: [{ name: 'Alex Rivera' }, { name: 'Maya Chen' }],
+        messages,
+      }),
+    );
+  };
+
+  makeMessageFile(1, [
+    { sender_name: 'Maya Chen', timestamp_ms: 3000, content: 'third' },
+    { sender_name: 'Alex Rivera', timestamp_ms: 1000, content: 'first' },
+  ]);
+  makeMessageFile(2, [
+    { sender_name: 'Maya Chen', timestamp_ms: 2000, content: 'second' },
+  ]);
+
+  const indexed = await buildChatIndex(zip);
+  const result = await loadChatMessages(indexed.chats[0]);
+
+  deepEqual(
+    result.messages.map((message) => message.content),
+    ['first', 'second', 'third'],
+    'messages should be returned in timestamp order',
   );
 });
 

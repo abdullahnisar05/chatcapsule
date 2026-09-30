@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Chat, Message } from '../types/chat';
-import { fixMessageEncoding } from '../lib/utils';
-import { chatExportSchema } from '../lib/archive-schemas';
+import { loadChatMessages } from '../lib/message-loader';
 
 export const useChatLoader = (selectedChat: Chat | undefined) => {
     const [activeMessages, setActiveMessages] = useState<Message[]>([]);
@@ -12,83 +11,46 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
         if (!selectedChat) {
             setActiveMessages([]);
             setParseWarning(null);
+            setIsParsingMessages(false);
             return;
         }
 
         let isCancelled = false;
 
-        const loadMessages = async () => {
+        const run = async () => {
             setIsParsingMessages(true);
             setParseWarning(null);
 
-            const chatMessages: Message[] = [];
-            const warnings: string[] = [];
-
             try {
-                const files = [...selectedChat.messageFiles].sort((a, b) =>
-                    parseInt(a.name.match(/message_(\d+)\.json/)?.[1] || '0', 10) -
-                    parseInt(b.name.match(/message_(\d+)\.json/)?.[1] || '0', 10)
-                );
-
-                for (const file of files) {
-                    if (isCancelled) return;
-
-                    try {
-                        const content = await file.async('string');
-                        const parsedExport = chatExportSchema.safeParse(JSON.parse(content));
-
-                        if (!parsedExport.success || !Array.isArray(parsedExport.data.messages)) {
-                            warnings.push(file.name);
-                            continue;
-                        }
-
-                        parsedExport.data.messages.forEach((rawMessage, index) => {
-                            const normalized = fixMessageEncoding(rawMessage);
-                            if (!normalized || typeof normalized !== 'object') return;
-
-                            chatMessages.push({
-                                ...normalized,
-                                id: selectedChat.id + ':' + file.name + ':' + index,
-                                type: normalized.type ?? 'Generic',
-                                is_unsent: normalized.is_unsent ?? false,
-                            } as Message);
-                        });
-                    } catch (error) {
-                        console.warn('Failed to parse ' + file.name, error);
-                        warnings.push(file.name);
-                    }
-
-                    await new Promise((resolve) => setTimeout(resolve, 0));
-                }
+                const result = await loadChatMessages(selectedChat, {
+                    isCancelled: () => isCancelled,
+                });
 
                 if (isCancelled) return;
 
-                chatMessages.sort((a, b) => {
-                    if (a.timestamp_ms !== b.timestamp_ms) {
-                        return a.timestamp_ms - b.timestamp_ms;
-                    }
-                    return a.id.localeCompare(b.id);
-                });
+                setActiveMessages(result.messages);
 
-                setActiveMessages(chatMessages);
-
-                if (warnings.length > 0) {
-                    const preview = warnings.slice(0, 2).join(', ');
-                    const suffix = warnings.length > 2 ? ' and ' + (warnings.length - 2) + ' more' : '';
+                if (result.warnings.length > 0) {
+                    const preview = result.warnings.slice(0, 2).join(', ');
+                    const suffix = result.warnings.length > 2
+                        ? ' and ' + (result.warnings.length - 2) + ' more'
+                        : '';
                     setParseWarning('Some archive files could not be read: ' + preview + suffix + '.');
                 }
             } catch (error) {
                 console.error('Failed to load messages:', error);
                 if (!isCancelled) {
                     setActiveMessages([]);
-                    setParseWarning('This conversation could not be read. The export may be incomplete or use an unsupported format.');
+                    setParseWarning(
+                        'This conversation could not be read. The export may be incomplete or use an unsupported format.',
+                    );
                 }
             } finally {
                 if (!isCancelled) setIsParsingMessages(false);
             }
         };
 
-        void loadMessages();
+        void run();
 
         return () => {
             isCancelled = true;
