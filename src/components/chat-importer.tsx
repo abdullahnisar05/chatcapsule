@@ -264,6 +264,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
       setIsLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
 
   const triggerFileSelect = () => fileInputRef.current?.click();
 
