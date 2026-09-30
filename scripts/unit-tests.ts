@@ -4,7 +4,7 @@ import { searchEntries } from '../src/lib/search-index';
 import JSZip from 'jszip';
 import { buildChatIndex } from '../src/lib/archive-reader';
 
-type Check = () => void | Promise<void>;
+type Check = () => void;
 
 const equal = (actual: unknown, expected: unknown, label: string) => {
   if (actual !== expected) throw new Error(label + ': expected ' + String(expected) + ', received ' + String(actual));
@@ -22,12 +22,18 @@ const deepEqual = (actual: unknown, expected: unknown, label: string) => {
   }
 };
 
-async function test(name: string, fn: Check): Promise<void> {
-  await fn();
+function test(name: string, fn: Check): void {
+  fn();
   console.log('✓ ' + name);
 }
 
-void test('accepts a minimal Instagram archive shape', () => {
+const pendingTests: Promise<void>[] = [];
+
+function testAsync(name: string, fn: () => Promise<void>): void {
+  pendingTests.push(fn().then(() => console.log('✓ ' + name)));
+}
+
+test('accepts a minimal Instagram archive shape', () => {
   const result = chatExportSchema.safeParse({
     title: 'Demo chat',
     participants: [{ name: 'Maya Chen' }, { name: 'Alex Rivera' }],
@@ -37,7 +43,7 @@ void test('accepts a minimal Instagram archive shape', () => {
   equal(result.success, true, 'schema should accept a valid archive');
 });
 
-void test('rejects malformed participant entries', () => {
+test('rejects malformed participant entries', () => {
   const result = chatExportSchema.safeParse({
     participants: [{ name: 123 }],
     messages: [],
@@ -46,7 +52,7 @@ void test('rejects malformed participant entries', () => {
   equal(result.success, false, 'schema should reject malformed participants');
 });
 
-void test('normalizes second-based timestamps without mutating the input', () => {
+test('normalizes second-based timestamps without mutating the input', () => {
   const original = {
     sender_name: 'Maya Chen',
     timestamp_ms: 1_750_000_000,
@@ -63,7 +69,7 @@ void test('normalizes second-based timestamps without mutating the input', () =>
   notEqual(normalized, original, 'normalization should return a new object');
 });
 
-void test('normalizes second-based timestamps from the legacy timestamp field', () => {
+test('normalizes second-based timestamps from the legacy timestamp field', () => {
   const normalized = fixMessageEncoding({
     sender_name: 'Maya Chen',
     timestamp: 1_750_000_000,
@@ -73,7 +79,7 @@ void test('normalizes second-based timestamps from the legacy timestamp field', 
   equal(normalized.timestamp_ms, 1_750_000_000_000, 'legacy timestamp should normalize to milliseconds');
 });
 
-void test('accepts only HTTP(S) URLs', () => {
+test('accepts only HTTP(S) URLs', () => {
   equal(isSafeHttpUrl('https://instagram.com/p/abc'), true, 'https URL should be accepted');
   equal(isSafeHttpUrl('http://example.com'), true, 'http URL should be accepted');
   equal(isSafeHttpUrl('javascript:alert(1)'), false, 'javascript URL should be rejected');
@@ -81,7 +87,7 @@ void test('accepts only HTTP(S) URLs', () => {
   equal(isSafeHttpUrl('not a url'), false, 'invalid URL should be rejected');
 });
 
-void test('search is case-insensitive and returns matching message IDs', () => {
+test('search is case-insensitive and returns matching message IDs', () => {
   const entries = [
     { id: 'm1', text: 'Meeting at 8 PM' },
     { id: 'm2', text: 'see you tomorrow' },
@@ -93,7 +99,7 @@ void test('search is case-insensitive and returns matching message IDs', () => {
   deepEqual(searchEntries(entries, '   '), [], 'blank queries should return no results');
 });
 
-void test('indexes readable conversations and reports malformed conversation files', async () => {
+testAsync('indexes readable conversations and reports malformed conversation files', async () => {
   const zip = new JSZip();
 
   zip.file(
@@ -125,7 +131,7 @@ void test('indexes readable conversations and reports malformed conversation fil
   equal(result.warnings.length, 2, 'both malformed conversations should be reported');
 });
 
-void test('fails clearly when no readable conversations remain', async () => {
+testAsync('fails clearly when no readable conversations remain', async () => {
   const zip = new JSZip();
   zip.file('your_activity/inbox/broken/message_1.json', '{ invalid json');
 
@@ -143,6 +149,9 @@ void test('fails clearly when no readable conversations remain', async () => {
   );
 });
 
-Promise.all([]).then(() => {
+Promise.all(pendingTests).then(() => {
   console.log('All ChatCapsule unit tests passed.');
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });
