@@ -19,7 +19,6 @@ import Twemoji from 'react-twemoji';
 
 import { cn, isEmojiOnly, fixEncoding, fixMessageEncoding, escapeRegex, getInitials } from '@/lib/utils';
 import { Chat, Message, MediaFile, Share, Reaction, Reply } from '@/types/chat';
-import { useBlobUrl, useBlobUrls } from '@/hooks/use-blob-urls';
 import { useChatLoader } from '@/hooks/use-chat-loader';
 
 // --- Modular Chat Components ---
@@ -38,7 +37,6 @@ export function ChatImporter() {
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [zip, setZip] = useState<JSZip | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(100); // Initial messages to show
   const [mainUser, setMainUser] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +54,6 @@ export function ChatImporter() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const virtualListRef = useRef<VirtualMessageListHandle>(null);
@@ -204,6 +201,19 @@ export function ChatImporter() {
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [allChats, mainUser]);
 
+  const senderCandidates = useMemo(() => {
+    const names = new Set<string>();
+
+    allChats.forEach(chat => {
+      chat.participants.forEach(participant => {
+        if (participant.name) names.add(participant.name);
+      });
+    });
+
+    if (mainUser) names.add(mainUser);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [allChats, mainUser]);
+
   const filteredChats = useMemo(() => {
     if (!debouncedSearchTerm) return allChats.map(chat => ({ ...chat, matchCount: 0 }));
     const term = debouncedSearchTerm.toLowerCase();
@@ -276,6 +286,25 @@ export function ChatImporter() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto space-y-[2px] p-2">
+          <div className="mx-1 mb-2 rounded-xl border border-[#262626] bg-surface-container-low p-3">
+            <label htmlFor="main-user" className="text-xs font-semibold text-on-surface">
+              Message alignment
+            </label>
+            <select
+              id="main-user"
+              value={mainUser || ''}
+              onChange={(event) => setMainUser(event.target.value || null)}
+              className="mt-2 h-9 w-full rounded-lg border border-[#363636] bg-surface-container-high px-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {senderCandidates.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <p className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+              Used only to place your messages on the right side.
+            </p>
+          </div>
+
           {filteredChats.map(chat => (
             <ChatListItem
               key={chat.id}
