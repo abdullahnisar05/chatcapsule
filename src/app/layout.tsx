@@ -11,8 +11,8 @@ const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' });
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'InstaChat Browser — Private Instagram Chat & DM Viewer',
-    template: '%s | InstaChat Browser'
+    default: 'ChatCapsule — Private Instagram DM Archive',
+    template: '%s | ChatCapsule'
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
@@ -25,16 +25,16 @@ export const metadata: Metadata = {
     'Instagram message backup',
     'read old Instagram DMs',
   ],
-  authors: [{ name: 'Kluvox' }],
-  creator: 'Kluvox',
-  publisher: 'Kluvox',
+  authors: [{ name: 'ChatCapsule' }],
+  creator: 'ChatCapsule',
+  publisher: 'ChatCapsule',
   category: 'Utilities',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: '/',
     siteName: SITE_NAME,
-    title: 'InstaChat Browser — Private Instagram Chat & DM Viewer',
+    title: 'ChatCapsule — Private Instagram DM Archive',
     description: SITE_DESCRIPTION,
     locale: 'en_US',
   },

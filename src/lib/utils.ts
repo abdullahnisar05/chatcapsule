@@ -34,36 +34,58 @@ export const fixEncoding = (str: string): string => {
   }
 };
 
-export const fixMessageEncoding = (m: any) => {
-  if (m.content) m.content = fixEncoding(m.content);
-  if (m.sender_name) m.sender_name = fixEncoding(m.sender_name);
-  if (m.reactions && Array.isArray(m.reactions)) {
-    m.reactions.forEach((r: any) => {
-      if (r.reaction) r.reaction = fixEncoding(r.reaction);
-      if (r.actor) r.actor = fixEncoding(r.actor);
-    });
-  }
-  if (m.share && m.share.share_text) {
-    m.share.share_text = fixEncoding(m.share.share_text);
-  }
-  if (m.reply) {
-    if (m.reply.message) m.reply.message = fixEncoding(m.reply.message);
-    if (m.reply.sender) m.reply.sender = fixEncoding(m.reply.sender);
-    // Normalize reply timestamp to milliseconds when present
-    if (m.reply.timestamp && typeof m.reply.timestamp === 'number') {
-      // If timestamp looks like seconds (<= 1e11), convert to ms
-      if (m.reply.timestamp < 1e11) m.reply.timestamp = m.reply.timestamp * 1000;
-    }
-  }
-  // Normalize message timestamp_ms to milliseconds if needed
-  if (m.timestamp_ms && typeof m.timestamp_ms === 'number') {
-    if (m.timestamp_ms < 1e11) m.timestamp_ms = m.timestamp_ms * 1000;
-  } else if (m.timestamp && typeof m.timestamp === 'number') {
-    // Some exports use `timestamp` (seconds) instead of `timestamp_ms`
-    m.timestamp_ms = m.timestamp < 1e11 ? m.timestamp * 1000 : m.timestamp;
-  }
+const normalizeTimestamp = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return value < 1e11 ? value * 1000 : value;
+};
 
-  return m;
+export const fixMessageEncoding = (m: any) => {
+  if (!m || typeof m !== 'object') return m;
+
+  const normalized = {
+    ...m,
+    content: typeof m.content === 'string' ? fixEncoding(m.content) : m.content,
+    sender_name: typeof m.sender_name === 'string' ? fixEncoding(m.sender_name) : m.sender_name,
+    reactions: Array.isArray(m.reactions)
+      ? m.reactions.map((r: any) => ({
+          ...r,
+          reaction: typeof r.reaction === 'string' ? fixEncoding(r.reaction) : r.reaction,
+          actor: typeof r.actor === 'string' ? fixEncoding(r.actor) : r.actor,
+        }))
+      : m.reactions,
+    share: m.share
+      ? {
+          ...m.share,
+          share_text: typeof m.share.share_text === 'string'
+            ? fixEncoding(m.share.share_text)
+            : m.share.share_text,
+        }
+      : m.share,
+    reply: m.reply
+      ? {
+          ...m.reply,
+          message: typeof m.reply.message === 'string' ? fixEncoding(m.reply.message) : m.reply.message,
+          sender: typeof m.reply.sender === 'string' ? fixEncoding(m.reply.sender) : m.reply.sender,
+          timestamp: normalizeTimestamp(m.reply.timestamp),
+        }
+      : m.reply,
+    timestamp_ms: normalizeTimestamp(
+      typeof m.timestamp_ms === 'number' ? m.timestamp_ms : m.timestamp,
+    ),
+  };
+
+  return normalized;
+};
+
+export const isSafeHttpUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
 };
 
 export const escapeRegex = (string: string) => {

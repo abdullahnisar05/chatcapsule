@@ -22,6 +22,7 @@ export type Share = {
 };
 
 export type Message = {
+    id: string;
     sender_name: string;
     timestamp_ms: number;
     content?: string;

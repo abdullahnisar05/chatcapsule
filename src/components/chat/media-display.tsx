@@ -4,14 +4,14 @@ import React from 'react';
 import JSZip from 'jszip';
 import { Loader2, Paperclip, Instagram, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Twemoji from 'react-twemoji';
-import { cn } from '@/lib/utils';
+import { cn, isSafeHttpUrl } from '@/lib/utils';
 import { Message, MediaFile } from '@/types/chat';
 import { useBlobUrl, useBlobUrls } from '@/hooks/use-blob-urls';
 import { PhotoGrid } from './ui';
 import { VoiceMessagePlayer } from './voice-message-player';
 
 // Move to shared hooks later
-import { useInView } from '@/components/chat-importer';
+import { useInView } from '@/hooks/use-in-view';
 
 export const MediaDisplay = React.memo(({ message, zip, onImageClick, isVisible }: { message: Message, zip: JSZip | null, onImageClick?: (files: MediaFile[], index: number) => void, isVisible: boolean }) => {
     const hasMultiplePhotos = message.photos && message.photos.length > 1;
