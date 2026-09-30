@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run build"
+    "test:unit": "tsc -p scripts/tsconfig.tests.json && node .test-build/scripts/unit-tests.js",
+    "test:smoke": "npm run build && node scripts/smoke-test.mjs",
+    "check": "npm run typecheck && npm run test:unit && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
@@ -23,7 +25,7 @@
     "@radix-ui/react-popover": "^1.1.6",
     "@radix-ui/react-progress": "^1.1.2",
     "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
+    "@radix-ui/react-scroll-area": "^1.1.6",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-separator": "^1.1.2",
     "@radix-ui/react-slider": "^1.2.3",
