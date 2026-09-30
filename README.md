@@ -28,7 +28,7 @@ ChatCapsule is designed around a local-first model:
 
 - Next.js + React + TypeScript
 - JSZip for Instagram export archives
-- Web Worker for expensive archive inspection
+- Single JSZip archive reader with cooperative metadata indexing
 - Lazy media loading with IntersectionObserver
 - Windowed message rendering with measured variable-height rows
 - Worker-backed in-chat search indexing
@@ -65,11 +65,11 @@ Because Instagram can change its export format, the parser is defensive: unsuppo
 
 ## Roadmap
 
-- Demo archive mode for portfolio visitors
+- Automated unit/integration/E2E tests
 - Archive statistics
 - Better import progress and archive validation
 - Explicit current-account selection for reliable message alignment
-- Automated parser/integration/E2E tests
+- Accessibility and keyboard-navigation pass
 - Accessibility and keyboard-navigation pass
 - Export selected conversations
 

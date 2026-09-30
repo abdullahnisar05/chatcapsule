@@ -90,7 +90,7 @@ const FEATURES = [
   {
     icon: FolderDown,
     title: 'Handles large exports',
-    description: 'Built to stream and lazily load big archives, so even years of chat history stay fast and responsive.',
+    description: 'Uses windowed rendering and lazy media loading to keep long chat histories responsive.',
   },
 ];
 
@@ -163,8 +163,8 @@ export function LandingPage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full border-outline-variant/20 bg-transparent sm:w-auto">
-                <Link href="#how-it-works">
-                  See how it works
+                <Link href="/demo">
+                  Explore the demo
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
