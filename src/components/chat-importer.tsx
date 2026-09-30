@@ -375,52 +375,42 @@ export function ChatImporter() {
                 )}
               </div>
             </div>
-            <div
-              ref={scrollRef}
-              className="flex-1 p-4 overflow-y-auto space-y-1 scroll-smooth z-10 pr-6"
-              onScroll={(e) => {
-                const target = e.currentTarget;
-                // If we scroll near the top, load more messages
-                if (target.scrollTop < 500 && visibleCount < activeMessages.length) {
-                  setVisibleCount(prev => Math.min(prev + 100, activeMessages.length));
-                }
-              }}
-            >
+            <div className="flex-1 min-h-0 z-10">
               {parseWarning && !isParsingMessages && (
-                <Alert className="mb-3 border-amber-500/20 bg-amber-500/5 text-amber-100">
+                <Alert className="mx-4 mt-3 border-amber-500/20 bg-amber-500/5 text-amber-100">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Some messages could not be read</AlertTitle>
                   <AlertDescription>{parseWarning}</AlertDescription>
                 </Alert>
               )}
+
               {isParsingMessages ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
+                <div className="flex h-full flex-col items-center justify-center gap-2">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   <p className="text-sm text-muted-foreground">Loading messages...</p>
                 </div>
               ) : (
-                (() => {
-                  let lastDate: string | null = null;
-                  let lastSender: string | null = null;
-
-                  // Show newest messages first (at the bottom)
-                  // So we slice from the end
-                  const messagesToRender = activeMessages.slice(-visibleCount);
-
-                  return messagesToRender.map((msg, index, arr) => {
+                <VirtualMessageList
+                  key={selectedChatId}
+                  ref={virtualListRef}
+                  className="h-full overflow-y-auto p-4 pr-6 scroll-smooth"
+                  items={activeMessages}
+                  initialItemIndex={activeMessages.length - 1}
+                  estimatedItemHeight={78}
+                  overscan={10}
+                  getItemKey={(msg) => msg.id}
+                  renderItem={(msg, index) => {
+                    const previousMessage = activeMessages[index - 1];
+                    const nextMessage = activeMessages[index + 1];
                     const messageDate = new Date(msg.timestamp_ms).toDateString();
-                    const showDateDivider = messageDate !== lastDate;
-                    lastDate = messageDate;
-
+                    const previousDate = previousMessage ? new Date(previousMessage.timestamp_ms).toDateString() : null;
+                    const nextDate = nextMessage ? new Date(nextMessage.timestamp_ms).toDateString() : null;
+                    const showDateDivider = index === 0 || messageDate !== previousDate;
                     const isMainUser = msg.sender_name === mainUser;
-                    const isFirstInGroup = showDateDivider || lastSender !== msg.sender_name;
-                    lastSender = msg.sender_name;
+                    const isFirstInGroup = showDateDivider || !previousMessage || previousMessage.sender_name !== msg.sender_name;
+                    const isLastInGroup = !nextMessage || nextMessage.sender_name !== msg.sender_name || nextDate !== messageDate;
 
-                    const nextMsg = arr[index + 1];
-                    const nextDate = nextMsg ? new Date(nextMsg.timestamp_ms).toDateString() : null;
-                    const isLastInGroup = !nextMsg || nextMsg.sender_name !== msg.sender_name || nextDate !== messageDate;
-
-                    const isSystemMessage = msg.type === "Generic" && msg.content && (
+                    const isSystemMessage = msg.type === "Generic" && !!msg.content && (
                       msg.content.includes(" named the group ") ||
                       msg.content.includes(" joined the group") ||
                       msg.content.includes(" left the group") ||
@@ -428,19 +418,30 @@ export function ChatImporter() {
                       msg.content.includes(" set the nickname for ") ||
                       msg.content.includes(" set your nickname to ") ||
                       msg.content.includes(" deleted a collection") ||
-                      msg.content.includes(" removed ") && msg.content.includes(" from the group")
+                      (msg.content.includes(" removed ") && msg.content.includes(" from the group"))
                     );
 
-                    const isLastMessage = index === messagesToRender.length - 1;
+                    const isLastMessage = index === activeMessages.length - 1;
                     const isSearchResult = searchResults.includes(msg.id);
                     const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === msg.id;
                     const showSeenStatus = isMainUser && isLastMessage && selectedChat.participantCount === 2;
 
                     return (
-                      <div key={msg.id} ref={(el) => { if (el) messageRefs.current.set(msg.id, el) }}
-                        className={cn("transition-colors rounded-lg", isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]")}>
+                      <div
+                        ref={(element) => {
+                          if (element) messageRefs.current.set(msg.id, element);
+                          else messageRefs.current.delete(msg.id);
+                        }}
+                        className={cn(
+                          "transition-colors rounded-lg",
+                          isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]",
+                          "contain-layout contain-paint"
+                        )}
+                      >
                         {showDateDivider && <DateDivider timestamp_ms={msg.timestamp_ms} />}
-                        {isSystemMessage ? <SystemMessage content={msg.content!} /> : (
+                        {isSystemMessage ? (
+                          <SystemMessage content={msg.content!} />
+                        ) : (
                           <MessageBubble
                             message={msg}
                             isMainUser={isMainUser}
@@ -460,11 +461,9 @@ export function ChatImporter() {
                         )}
                       </div>
                     );
-                  });
-                })()
+                  }}
+                />
               )}
-              {/* Invisible anchor for scrolling to bottom */}
-              <div ref={messagesEndRef} className="h-0 w-full" />
             </div>
             <div className="p-4 z-10 bg-background">
               <div className="flex items-center gap-3 bg-surface-container-high rounded-full px-4 py-2 border border-[#262626]">
