@@ -52,6 +52,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the implementation boundaries and t
 - Recoverable viewer error boundary
 - Automated typecheck, unit tests, production build, and route smoke tests
 - Reproducible 100k/250k/500k search-core benchmark
+- Deterministic 10k/25k/50k archive import benchmark
+- Chromium end-to-end coverage for demo, engineering route, ZIP upload, conversation rendering, and message search
 
 ## Verification
 
@@ -64,6 +66,8 @@ npm run test:unit
 npm run build
 npm run test:smoke
 npm run benchmark:search
+npm run benchmark:import
+npm run test:e2e
 ```
 
 The search benchmark reports deterministic dataset size, match count, median query time, and process heap usage. These numbers are machine-dependent and should be used for regression tracking rather than universal performance claims.
