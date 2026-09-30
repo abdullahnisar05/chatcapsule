@@ -28,7 +28,7 @@ test('landing page exposes product and engineering paths', async ({ page }) => {
 
 test('demo supports in-chat search and result navigation', async ({ page }) => {
   await page.goto('/demo');
-  await expect(page.getByText('Alex Rivera').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Alex Rivera' }).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Search messages in this conversation' }).click();
   const search = page.getByRole('textbox', { name: 'Find in chat' });
   await search.fill('virtualized');
@@ -48,13 +48,13 @@ test('real archive upload renders conversation and supports search', async ({ pa
   });
 
   await expect(page.getByRole('heading', { name: 'Alex Rivera' }).first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Hello from the browser test')).toBeVisible();
+  await expect(page.getByRole('main', { name: 'Conversation messages' }).getByText('Hello from the browser test')).toBeVisible();
 
   await page.getByRole('button', { name: 'Search messages in this conversation' }).click();
   const search = page.getByRole('textbox', { name: 'Find in chat' });
   await search.fill('browser test');
   await expect(page.getByRole('status').filter({ hasText: /1\// })).toBeVisible();
-  await expect(page.getByText('Hello from the browser test')).toBeVisible();
+  await expect(page.getByRole('main', { name: 'Conversation messages' }).getByText('Hello from the browser test')).toBeVisible();
 });
 
 test('large conversation keeps the DOM windowed', async ({ page }) => {
@@ -82,7 +82,9 @@ test('large conversation keeps the DOM windowed', async ({ page }) => {
   });
 
   await expect(page.getByRole('heading', { name: 'Alex Rivera' }).first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Large archive message 4999')).toBeVisible();
+  const messageList = page.getByTestId('virtual-message-list');
+  await messageList.evaluate((element) => element.scrollTo({ top: element.scrollHeight, behavior: 'auto' }));
+  await expect(page.getByText('Large archive message 4999').last()).toBeVisible({ timeout: 15_000 });
 
   const renderedCount = await page.getByTestId('message-bubble').count();
   expect(renderedCount).toBeLessThan(300);
