@@ -182,9 +182,11 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
 
   const filteredChats = useMemo(() => {
     const term = debouncedSearchTerm.trim().toLowerCase();
-    if (!term) return allChats;
+    if (!term) return allChats.map((chat) => ({ ...chat, matchCount: 0 }));
 
-    return allChats.filter((chat) => chat.title.toLowerCase().includes(term));
+    return allChats
+      .filter((chat) => chat.title.toLowerCase().includes(term))
+      .map((chat) => ({ ...chat, matchCount: 0 }));
   }, [allChats, debouncedSearchTerm]);
 
   const flashMessage = (id: string) => {
