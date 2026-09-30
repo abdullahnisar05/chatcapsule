@@ -57,7 +57,7 @@ export const MessageBubble = React.memo(({
     }
 
     return (
-        <div className={cn("group/message relative flex items-end gap-2 mb-1", alignment, isFirstInGroup ? "mt-6" : "mt-0.5")}>
+        <div data-testid="message-bubble" className={cn("group/message relative flex items-end gap-2 mb-1", alignment, isFirstInGroup ? "mt-6" : "mt-0.5")}>
             {!isMainUser && isGroupChat && (
                 <Avatar className={cn("h-6 w-6 sm:h-8 sm:w-8 self-end mb-1", !isLastInGroup && "invisible")}>
                     <AvatarFallback className="text-[10px] sm:text-xs bg-surface-container-high">{getInitials(message.sender_name)}</AvatarFallback>
