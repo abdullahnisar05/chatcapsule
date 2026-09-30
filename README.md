@@ -54,6 +54,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the implementation boundaries and t
 - Reproducible 100k/250k/500k search-core benchmark
 - Deterministic 10k/25k/50k archive import benchmark
 - Chromium end-to-end coverage for demo, engineering route, ZIP upload, conversation rendering, and message search
+- Cancellable archive/message parsing with progressive loading feedback
+- Replacement uploads preserve the current archive until the new archive is successfully indexed
+- Bounded media preloading and explicit blob URL cleanup
 
 ## Verification
 

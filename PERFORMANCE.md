@@ -45,6 +45,12 @@ This generates deterministic, compressed ZIP archives with 10k, 25k, and 50k mes
 
 The benchmark is useful for regression detection. It is not a substitute for browser profiling of a real export with real media.
 
+## Cancellation and memory behavior
+
+Large selected conversations are parsed in cooperative batches and accept an `AbortSignal`. Changing conversations or cancelling an archive replacement stops further normalization work at safe yield points.
+
+Media grids preload only the first four visible slots and load at most two blobs concurrently. The lightbox can still request the full media set on demand. Stale media loads revoke newly created object URLs before caching them.
+
 ## What is not measured yet
 
 The current benchmark does not represent:

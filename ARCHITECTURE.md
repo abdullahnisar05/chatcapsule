@@ -63,7 +63,8 @@ That leads to four deliberate choices:
 1. One archive reader to avoid parsing the same ZIP twice.
 2. Windowed rendering to avoid placing every message in the DOM.
 3. Worker-backed search to keep text matching away from the UI event loop.
-4. Lazy media plus explicit object-URL cleanup to control browser memory pressure.
+4. Lazy media plus bounded concurrency and explicit object-URL cleanup to control browser memory pressure.
+5. Abortable, cooperative parsing so long operations can stop without leaving the previous archive in a half-replaced state.
 
 ## Failure handling
 

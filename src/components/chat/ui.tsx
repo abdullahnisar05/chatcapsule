@@ -54,9 +54,10 @@ export const DateDivider = ({ timestamp_ms }: { timestamp_ms: number }) => {
 }
 
 export const PhotoGrid = React.memo(({ photos, zip, onImageClick, isVisible }: { photos: MediaFile[], zip: JSZip | null, onImageClick?: (index: number) => void, isVisible: boolean }) => {
-    const { urls, loading } = useBlobUrls(zip, photos, isVisible);
-    const count = photos.length;
     const maxDisplay = 4;
+    const displayPhotos = useMemo(() => photos.slice(0, maxDisplay), [photos]);
+    const { urls, loading } = useBlobUrls(zip, displayPhotos, isVisible);
+    const count = photos.length;
     const remaining = count - maxDisplay;
 
     if (loading || !isVisible) {

@@ -2,13 +2,22 @@ import JSZip from 'jszip';
 import { chatExportSchema } from './archive-schemas';
 import { fixEncoding } from './utils';
 import { Chat } from '../types/chat';
+import { throwIfAborted } from './abort';
 
 type ProgressCallback = (progress: number) => void;
+
+type BuildChatIndexOptions = {
+  signal?: AbortSignal;
+};
 
 export async function buildChatIndex(
   zip: JSZip,
   onProgress?: ProgressCallback,
+  options: BuildChatIndexOptions = {},
 ): Promise<{ chats: Chat[]; frequentSender: string; warnings: string[] }> {
+  const { signal } = options;
+  throwIfAborted(signal);
+
   const jsonFiles = Object.values(zip.files).filter(
     (file) => /message_\d+\.json$/.test(file.name) && file.name.includes('/inbox/'),
   );
@@ -42,9 +51,11 @@ export async function buildChatIndex(
   const warnings: string[] = [];
 
   for (let i = 0; i < entries.length; i += 10) {
+    throwIfAborted(signal);
     const batch = entries.slice(i, i + 10);
 
     for (const [chatFolder, files] of batch) {
+      throwIfAborted(signal);
       try {
         const message1FileName =
           files.find((name) => name.endsWith('message_1.json')) ?? files[0];
@@ -105,6 +116,7 @@ export async function buildChatIndex(
 
     onProgress?.(Math.min(100, Math.floor(((i + batch.length) / entries.length) * 100)));
     await new Promise((resolve) => setTimeout(resolve, 0));
+    throwIfAborted(signal);
   }
 
   const frequentSender = Object.keys(senderCounts).reduce(

@@ -182,6 +182,56 @@ testAsync('loads and orders messages across archive parts', async () => {
   );
 });
 
+
+testAsync('aborts archive indexing before doing work', async () => {
+  const zip = new JSZip();
+  zip.file(
+    'your_activity/inbox/alex_rivera/message_1.json',
+    JSON.stringify({
+      title: 'Alex Rivera',
+      participants: [{ name: 'Alex Rivera' }],
+      messages: [],
+    }),
+  );
+
+  const controller = new AbortController();
+  controller.abort();
+
+  let aborted = false;
+  try {
+    await buildChatIndex(zip, undefined, { signal: controller.signal });
+  } catch (error) {
+    aborted = error instanceof Error && error.name === 'AbortError';
+  }
+
+  equal(aborted, true, 'aborted archive indexing should throw AbortError');
+});
+
+testAsync('aborts message loading before parsing files', async () => {
+  const zip = new JSZip();
+  zip.file(
+    'your_activity/inbox/alex_rivera/message_1.json',
+    JSON.stringify({
+      title: 'Alex Rivera',
+      participants: [{ name: 'Alex Rivera' }],
+      messages: [{ sender_name: 'Alex Rivera', timestamp_ms: 1000, content: 'Hello' }],
+    }),
+  );
+
+  const indexed = await buildChatIndex(zip);
+  const controller = new AbortController();
+  controller.abort();
+
+  let aborted = false;
+  try {
+    await loadChatMessages(indexed.chats[0], { signal: controller.signal });
+  } catch (error) {
+    aborted = error instanceof Error && error.name === 'AbortError';
+  }
+
+  equal(aborted, true, 'aborted message loading should throw AbortError');
+});
+
 Promise.all(pendingTests).then(() => {
   console.log('All ChatCapsule unit tests passed.');
 }).catch((error) => {
