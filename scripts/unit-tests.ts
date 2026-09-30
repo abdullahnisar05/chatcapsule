@@ -1,9 +1,26 @@
-import { strict as assert } from 'node:assert';
 import { chatExportSchema } from '../src/lib/archive-schemas';
 import { fixMessageEncoding, isSafeHttpUrl } from '../src/lib/utils';
 import { searchEntries } from '../src/lib/search-index';
 
-function test(name: string, fn: () => void): void {
+type Check = () => void;
+
+const equal = (actual: unknown, expected: unknown, label: string) => {
+  if (actual !== expected) throw new Error(label + ': expected ' + String(expected) + ', received ' + String(actual));
+};
+
+const notEqual = (actual: unknown, expected: unknown, label: string) => {
+  if (actual === expected) throw new Error(label + ': values should differ');
+};
+
+const deepEqual = (actual: unknown, expected: unknown, label: string) => {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  if (actualJson !== expectedJson) {
+    throw new Error(label + ': expected ' + expectedJson + ', received ' + actualJson);
+  }
+};
+
+function test(name: string, fn: Check): void {
   fn();
   console.log('✓ ' + name);
 }
@@ -15,7 +32,7 @@ test('accepts a minimal Instagram archive shape', () => {
     messages: [{ sender_name: 'Maya Chen', timestamp_ms: 1_750_000_000_000, content: 'Hello' }],
   });
 
-  assert.equal(result.success, true);
+  equal(result.success, true, 'schema should accept a valid archive');
 });
 
 test('rejects malformed participant entries', () => {
@@ -24,7 +41,7 @@ test('rejects malformed participant entries', () => {
     messages: [],
   });
 
-  assert.equal(result.success, false);
+  equal(result.success, false, 'schema should reject malformed participants');
 });
 
 test('normalizes second-based timestamps without mutating the input', () => {
@@ -37,11 +54,11 @@ test('normalizes second-based timestamps without mutating the input', () => {
 
   const normalized = fixMessageEncoding(original);
 
-  assert.equal(normalized.timestamp_ms, 1_750_000_000_000);
-  assert.equal(normalized.reply.timestamp, 1_750_000_100_000);
-  assert.equal(original.timestamp_ms, 1_750_000_000);
-  assert.equal(original.reply.timestamp, 1_750_000_100);
-  assert.notEqual(normalized, original);
+  equal(normalized.timestamp_ms, 1_750_000_000_000, 'message timestamp should normalize to milliseconds');
+  equal(normalized.reply.timestamp, 1_750_000_100_000, 'reply timestamp should normalize to milliseconds');
+  equal(original.timestamp_ms, 1_750_000_000, 'input message timestamp must not change');
+  equal(original.reply.timestamp, 1_750_000_100, 'input reply timestamp must not change');
+  notEqual(normalized, original, 'normalization should return a new object');
 });
 
 test('normalizes second-based timestamps from the legacy timestamp field', () => {
@@ -51,15 +68,15 @@ test('normalizes second-based timestamps from the legacy timestamp field', () =>
     content: 'Legacy timestamp',
   });
 
-  assert.equal(normalized.timestamp_ms, 1_750_000_000_000);
+  equal(normalized.timestamp_ms, 1_750_000_000_000, 'legacy timestamp should normalize to milliseconds');
 });
 
 test('accepts only HTTP(S) URLs', () => {
-  assert.equal(isSafeHttpUrl('https://instagram.com/p/abc'), true);
-  assert.equal(isSafeHttpUrl('http://example.com'), true);
-  assert.equal(isSafeHttpUrl('javascript:alert(1)'), false);
-  assert.equal(isSafeHttpUrl('data:text/html,hello'), false);
-  assert.equal(isSafeHttpUrl('not a url'), false);
+  equal(isSafeHttpUrl('https://instagram.com/p/abc'), true, 'https URL should be accepted');
+  equal(isSafeHttpUrl('http://example.com'), true, 'http URL should be accepted');
+  equal(isSafeHttpUrl('javascript:alert(1)'), false, 'javascript URL should be rejected');
+  equal(isSafeHttpUrl('data:text/html,hello'), false, 'data URL should be rejected');
+  equal(isSafeHttpUrl('not a url'), false, 'invalid URL should be rejected');
 });
 
 test('search is case-insensitive and returns matching message IDs', () => {
@@ -69,9 +86,9 @@ test('search is case-insensitive and returns matching message IDs', () => {
     { id: 'm3', text: 'MEETING moved to Friday' },
   ];
 
-  assert.deepEqual(searchEntries(entries, 'meeting'), ['m1', 'm3']);
-  assert.deepEqual(searchEntries(entries, '  TOMORROW  '), ['m2']);
-  assert.deepEqual(searchEntries(entries, '   '), []);
+  deepEqual(searchEntries(entries, 'meeting'), ['m1', 'm3'], 'search should match case-insensitively');
+  deepEqual(searchEntries(entries, '  TOMORROW  '), ['m2'], 'search should trim whitespace');
+  deepEqual(searchEntries(entries, '   '), [], 'blank queries should return no results');
 });
 
 console.log('All ChatCapsule unit tests passed.');
