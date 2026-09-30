@@ -1,30 +1,35 @@
 import { useState, useEffect } from 'react';
 import { Chat, Message } from '../types/chat';
 import { loadChatMessages } from '../lib/message-loader';
+import { isAbortError } from '../lib/abort';
 
 export const useChatLoader = (selectedChat: Chat | undefined) => {
     const [activeMessages, setActiveMessages] = useState<Message[]>([]);
     const [isParsingMessages, setIsParsingMessages] = useState(false);
     const [parseWarning, setParseWarning] = useState<string | null>(null);
+    const [messageLoadProgress, setMessageLoadProgress] = useState(0);
 
     useEffect(() => {
         if (!selectedChat) {
             setActiveMessages([]);
             setParseWarning(null);
+            setMessageLoadProgress(0);
             setIsParsingMessages(false);
             return;
         }
 
-        let isCancelled = false;
         const controller = new AbortController();
+        let isCancelled = false;
 
         const run = async () => {
             setIsParsingMessages(true);
             setParseWarning(null);
+            setMessageLoadProgress(0);
 
             try {
                 const result = await loadChatMessages(selectedChat, {
-                    isCancelled: () => isCancelled,
+                    signal: controller.signal,
+                    onProgress: setMessageLoadProgress,
                 });
 
                 if (isCancelled) return;
@@ -39,13 +44,13 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
                     setParseWarning('Some archive files could not be read: ' + preview + suffix + '.');
                 }
             } catch (error) {
+                if (isAbortError(error) || isCancelled) return;
+
                 console.error('Failed to load messages:', error);
-                if (!isCancelled) {
-                    setActiveMessages([]);
-                    setParseWarning(
-                        'This conversation could not be read. The export may be incomplete or use an unsupported format.',
-                    );
-                }
+                setActiveMessages([]);
+                setParseWarning(
+                    'This conversation could not be read. The export may be incomplete or use an unsupported format.',
+                );
             } finally {
                 if (!isCancelled) setIsParsingMessages(false);
             }
@@ -59,5 +64,5 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
         };
     }, [selectedChat]);
 
-    return { activeMessages, isParsingMessages, parseWarning };
+    return { activeMessages, isParsingMessages, parseWarning, messageLoadProgress };
 };
