@@ -244,10 +244,12 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
           target = itemTop - container.clientHeight + itemHeight;
         }
 
+        const safeTarget = Math.max(0, target);
         container.scrollTo({
-          top: Math.max(0, target),
+          top: safeTarget,
           behavior: options.behavior ?? 'smooth',
         });
+        updateRange(safeTarget, container.clientHeight);
       },
       scrollToBottom(behavior = 'auto') {
         const container = containerRef.current;
@@ -255,7 +257,7 @@ export const VirtualMessageList = forwardRef(function VirtualMessageList<T>(
         container.scrollTo({ top: container.scrollHeight, behavior });
       },
     }),
-    [estimatedItemHeight, getOffset, items.length]
+    [estimatedItemHeight, getOffset, items.length, updateRange]
   );
 
   const visibleItems = useMemo(
