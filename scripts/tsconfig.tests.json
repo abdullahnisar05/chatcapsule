@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "lib": ["ES2022", "DOM"],
+    "outDir": "../.test-build",
+    "rootDir": "..",
+    "noEmitOnError": true
+  },
+  "include": [
+    "./unit-tests.ts",
+    "../src/lib/utils.ts",
+    "../src/lib/archive-schemas.ts",
+    "../src/lib/search-index.ts"
+  ]
+}
