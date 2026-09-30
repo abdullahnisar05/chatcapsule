@@ -2,10 +2,13 @@ import { spawn } from 'node:child_process';
 import process from 'node:process';
 
 const port = 3199;
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const server = spawn(npmCommand, ['run', 'start', '--', '-p', String(port)], {
+const nextCommand = process.platform === 'win32'
+  ? './node_modules/.bin/next.cmd'
+  : './node_modules/.bin/next';
+
+const server = spawn(nextCommand, ['start', '-p', String(port)], {
   stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, PORT: String(port) },
+  env: process.env,
 });
 
 const output = [];
@@ -48,9 +51,19 @@ try {
   console.log('✓ / returns 200 and renders ChatCapsule');
   console.log('✓ /demo returns 200 and renders the demo marker');
 } finally {
-  server.kill('SIGTERM');
-  await sleep(500);
-  if (!server.killed) server.kill('SIGKILL');
+  if (!server.killed) {
+    server.kill('SIGTERM');
+  }
+
+  await Promise.race([
+    new Promise((resolve) => server.once('exit', resolve)),
+    sleep(2000),
+  ]);
+
+  if (server.exitCode === null) {
+    server.kill('SIGKILL');
+  }
+
   if (output.length && process.env.DEBUG_SMOKE === '1') {
     console.log(output.join(''));
   }
