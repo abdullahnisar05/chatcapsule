@@ -10,7 +10,9 @@
     "test:unit": "tsc -p scripts/tsconfig.tests.json && node .test-build/scripts/unit-tests.js",
     "test:smoke": "npm run build && node scripts/smoke-test.mjs",
     "benchmark:search": "npm run test:unit && node scripts/search-benchmark.mjs",
-    "check": "npm run typecheck && npm run test:unit && npm run build"
+    "check": "npm run typecheck && npm run test:unit && npm run build",
+    "benchmark:import": "npm run test:unit && node scripts/import-benchmark.mjs",
+    "test:e2e": "node scripts/e2e-smoke.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
@@ -41,7 +43,7 @@
     "embla-carousel-react": "^8.6.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.475.0",
-    "next": "16.1.6",
+    "next": "16.3.7",
     "react": "^19.2.1",
     "react-day-picker": "^9.11.3",
     "react-dom": "^19.2.1",
