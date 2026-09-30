@@ -1,0 +1,13 @@
+{
+    "messages": [
+        {
+            "sender_name": "Test User",
+            "timestamp_ms": 1690000000,
+            "content": "This is a reply test",
+            "reply": {
+                "sender": "John Doe",
+                "message": "Original message text"
+            }
+        }
+    ]
+}
