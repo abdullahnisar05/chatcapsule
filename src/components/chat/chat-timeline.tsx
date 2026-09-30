@@ -55,6 +55,8 @@ export const ChatTimeline = React.memo(function ChatTimeline({
   onReplyClick,
   onImageClick,
 }: ChatTimelineProps) {
+  const searchResultSet = React.useMemo(() => new Set(searchResults), [searchResults]);
+
   return (
     <main id="chat-message-list" className="flex-1 min-h-0 z-10" aria-label="Conversation messages">
       {parseWarning && !isParsingMessages && (
@@ -98,7 +100,7 @@ export const ChatTimeline = React.memo(function ChatTimeline({
             const isFirstInGroup = showDateDivider || !previousMessage || previousMessage.sender_name !== message.sender_name;
             const isLastInGroup = !nextMessage || nextMessage.sender_name !== message.sender_name || nextDate !== messageDate;
             const isLastMessage = index === messages.length - 1;
-            const isSearchResult = searchResults.includes(message.id);
+            const isSearchResult = searchResultSet.has(message.id);
             const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === message.id;
             const showSeenStatus = isMainUser && isLastMessage && chat.participantCount === 2;
 
