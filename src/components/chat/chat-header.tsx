@@ -89,7 +89,7 @@ export const ChatHeader = React.memo(function ChatHeader({
             onChange={(event) => onSearchChange(event.target.value)}
             onBlur={onSearchBlur}
             onKeyDown={onSearchKeyDown}
-            autoFocus
+            autoFocus={showHeaderSearch}
           />
           {messageSearchTerm && (
             <div className="flex items-center gap-2 ml-2 h-5 text-zinc-400">
