@@ -51,6 +51,10 @@ Large selected conversations are parsed in cooperative batches and accept an `Ab
 
 Media grids preload only the first four visible slots and load at most two blobs concurrently. The lightbox can still request the full media set on demand. Stale media loads revoke newly created object URLs before caching them.
 
+## Export behavior
+
+Conversation exports are generated from the already-loaded message model in the browser. Media binaries are intentionally referenced by type rather than copied into the text file, keeping exports small and predictable.
+
 ## What is not measured yet
 
 The current benchmark does not represent:
