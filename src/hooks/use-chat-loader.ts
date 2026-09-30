@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Chat, Message } from '../types/chat';
 import { fixMessageEncoding } from '../lib/utils';
+import { chatExportSchema } from '../lib/archive-schemas';
 
 export const useChatLoader = (selectedChat: Chat | undefined) => {
     const [activeMessages, setActiveMessages] = useState<Message[]>([]);
@@ -34,20 +35,22 @@ export const useChatLoader = (selectedChat: Chat | undefined) => {
 
                     try {
                         const content = await file.async('string');
-                        const data = JSON.parse(content);
+                        const parsedExport = chatExportSchema.safeParse(JSON.parse(content));
 
-                        if (!Array.isArray(data.messages)) {
+                        if (!parsedExport.success || !Array.isArray(parsedExport.data.messages)) {
                             warnings.push(file.name);
                             continue;
                         }
 
-                        data.messages.forEach((rawMessage: any, index: number) => {
+                        parsedExport.data.messages.forEach((rawMessage, index) => {
                             const normalized = fixMessageEncoding(rawMessage);
                             if (!normalized || typeof normalized !== 'object') return;
 
                             chatMessages.push({
                                 ...normalized,
                                 id: selectedChat.id + ':' + file.name + ':' + index,
+                                type: normalized.type ?? 'Generic',
+                                is_unsent: normalized.is_unsent ?? false,
                             } as Message);
                         });
                     } catch (error) {

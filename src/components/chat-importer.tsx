@@ -19,7 +19,6 @@ import Twemoji from 'react-twemoji';
 
 import { cn, isEmojiOnly, fixEncoding, fixMessageEncoding, escapeRegex, getInitials } from '@/lib/utils';
 import { Chat, Message, MediaFile, Share, Reaction, Reply } from '@/types/chat';
-import { useBlobUrl, useBlobUrls } from '@/hooks/use-blob-urls';
 import { useChatLoader } from '@/hooks/use-chat-loader';
 
 // --- Modular Chat Components ---
@@ -29,44 +28,25 @@ import { MediaDisplay, LazyMediaDisplay } from './chat/media-display';
 import { MessageBubble } from './chat/message-bubble';
 import { Lightbox } from './chat/lightbox';
 import { ChatListItem } from './chat/chat-list-item';
+import { VirtualMessageList, VirtualMessageListHandle } from './chat/virtual-message-list';
 
 // --- Custom Hooks ---
-/**
- * @deprecated Use shared hooks where possible. Keeping exported for transition.
- */
-export const useInView = (options?: IntersectionObserverInit) => {
-  const [isInView, setIsInView] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsInView(entry.isIntersecting);
-    }, options);
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [options]);
-
-  return { ref, isInView };
-};
-
-
-
 
 // --- Main Component ---
 export function ChatImporter() {
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [zip, setZip] = useState<JSZip | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(100); // Initial messages to show
   const [mainUser, setMainUser] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showHeaderSearch, setShowHeaderSearch] = useState(false);
   const [searchResultIndex, setSearchResultIndex] = useState(-1);
   const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [searchIndexReady, setSearchIndexReady] = useState(false);
   const [lightboxData, setLightboxData] = useState<{ mediaFiles: MediaFile[], index: number } | null>(null);
 
   // Debounced search for better sidebar performance
@@ -76,122 +56,155 @@ export function ChatImporter() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const virtualListRef = useRef<VirtualMessageListHandle>(null);
+  const searchWorkerRef = useRef<Worker | null>(null);
+  const searchRequestRef = useRef(0);
 
   const selectedChat = useMemo(() => allChats.find(c => c.id === selectedChatId), [allChats, selectedChatId]);
 
   // USE MODULAR LOADER HOOK
   const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(selectedChat);
 
-  // Load messages on-demand when chat selection changes
   useEffect(() => {
-    if (selectedChat) {
-      setVisibleCount(100); // Reset visible count on new chat switch
-    }
-  }, [selectedChatId]);
-
-  // Search ALL messages for accurate total count
-  const visibleMessages = useMemo(() => activeMessages.slice(-visibleCount), [activeMessages, visibleCount]);
-
-  useEffect(() => {
-    if (!selectedChat || !activeMessages.length || !messageSearchTerm) {
+    if (!selectedChat || !activeMessages.length) {
+      searchWorkerRef.current?.terminate();
+      searchWorkerRef.current = null;
+      setSearchIndexReady(false);
       setSearchResults([]);
       setSearchResultIndex(-1);
       return;
     }
 
-    const matches = activeMessages
-      .filter(msg => msg.content && msg.content.toLowerCase().includes(messageSearchTerm.toLowerCase()))
-      .map(msg => msg.id);
+    const worker = new Worker(new URL('../lib/search-worker', import.meta.url), { type: 'module' });
+    searchWorkerRef.current = worker;
+    setSearchIndexReady(false);
+    setSearchResults([]);
+    setSearchResultIndex(-1);
 
-    setSearchResults(matches);
-    setSearchResultIndex(matches.length > 0 ? matches.length - 1 : -1);
-  }, [selectedChat, activeMessages, messageSearchTerm]);
+    worker.onmessage = (event) => {
+      const data = event.data;
 
-  // Reliable Auto-scroll to bottom on chat open
-  useEffect(() => {
-    if (!selectedChat || isParsingMessages || messageSearchTerm || visibleCount > 100) return;
+      if (data?.type === 'READY') {
+        setSearchIndexReady(true);
+        return;
+      }
 
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      if (data?.type === 'RESULTS' && data.requestId === searchRequestRef.current) {
+        const ids = Array.isArray(data.ids) ? data.ids as string[] : [];
+        setSearchResults(ids);
+        setSearchResultIndex(ids.length > 0 ? ids.length - 1 : -1);
+      }
     };
 
-    // Use rAF + timeout to ensure DOM paints and lazy elements have hydrated their min-heights
-    const frame = requestAnimationFrame(() => {
-      setTimeout(scrollToBottom, 50);
-      setTimeout(scrollToBottom, 200); // Failsafe for slower image loads that shift layout
+    worker.onerror = () => {
+      setSearchIndexReady(false);
+      setSearchResults([]);
+      setSearchResultIndex(-1);
+    };
+
+    worker.postMessage({
+      type: 'BUILD',
+      entries: activeMessages
+        .filter(message => !!message.content)
+        .map(message => ({
+          id: message.id,
+          text: message.content!.toLowerCase(),
+        })),
     });
 
-    return () => cancelAnimationFrame(frame);
-  }, [activeMessages.length, isParsingMessages, selectedChatId]);
+    return () => {
+      worker.terminate();
+      if (searchWorkerRef.current === worker) {
+        searchWorkerRef.current = null;
+      }
+    };
+  }, [selectedChatId, activeMessages]);
+
+  useEffect(() => {
+    const worker = searchWorkerRef.current;
+
+    if (!worker || !searchIndexReady) {
+      if (!messageSearchTerm) {
+        setSearchResults([]);
+        setSearchResultIndex(-1);
+      }
+      return;
+    }
+
+    const requestId = ++searchRequestRef.current;
+    worker.postMessage({
+      type: 'SEARCH',
+      query: messageSearchTerm,
+      requestId,
+    });
+
+    if (!messageSearchTerm.trim()) {
+      setSearchResults([]);
+      setSearchResultIndex(-1);
+    }
+  }, [messageSearchTerm, searchIndexReady]);
+
+
+  const messageIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    activeMessages.forEach((message, index) => map.set(message.id, index));
+    return map;
+  }, [activeMessages]);
+
+  const messageIndexByTimestamp = useMemo(() => {
+    const map = new Map<number, number>();
+    activeMessages.forEach((message, index) => {
+      if (!map.has(message.timestamp_ms)) map.set(message.timestamp_ms, index);
+    });
+    return map;
+  }, [activeMessages]);
+
+  const flashMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+
+    el.classList.add('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
+    window.setTimeout(() => {
+      el.classList.remove('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
+    }, 2000);
+  };
 
   const handleReplyClick = (timestamp: number) => {
-    const highlight = () => {
-      const el = messageRefs.current.get(String(timestamp));
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.classList.add('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
-      setTimeout(() => {
-        el?.classList.remove('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
-      }, 2000);
-    };
+    const targetIndex = messageIndexByTimestamp.get(timestamp) ?? -1;
+    if (targetIndex === -1) return;
 
-    // The reply target may be older than what's currently rendered (only the
-    // newest `visibleCount` messages are mounted), so expand the visible
-    // range before trying to scroll to it.
-    const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === timestamp);
-    if (msgIndexInAll === -1) return;
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-      setTimeout(highlight, 100);
-    } else {
-      highlight();
-    }
+    const target = activeMessages[targetIndex];
+    virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
+    window.setTimeout(() => flashMessage(target.id), 250);
   };
 
   const scrollToSearchResult = (index: number) => {
-    if (index >= 0 && index < searchResults.length) {
-      const timestamp = searchResults[index];
-      const el = messageRefs.current.get(timestamp);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+    if (index < 0 || index >= searchResults.length) return;
+
+    const id = searchResults[index];
+    const targetIndex = messageIndexById.get(id) ?? -1;
+    if (targetIndex === -1) return;
+
+    virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
+    window.setTimeout(() => flashMessage(id), 250);
   };
 
   const goToNextMatch = () => {
     if (searchResults.length === 0) return;
+
     const nextIndex = (searchResultIndex + 1) % searchResults.length;
-    const id = searchResults[nextIndex];
-
-    // Auto-expand visible messages if match is beyond current view
-    const msgIndexInAll = activeMessages.findIndex(m => m.id === id);
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-    }
-
     setSearchResultIndex(nextIndex);
-    // Use a small timeout to allow the list to re-render if visibleCount changed
-    setTimeout(() => scrollToSearchResult(nextIndex), 50);
+    scrollToSearchResult(nextIndex);
   };
 
   const goToPrevMatch = () => {
     if (searchResults.length === 0) return;
+
     const prevIndex = (searchResultIndex - 1 + searchResults.length) % searchResults.length;
-    const id = searchResults[prevIndex];
-
-    const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === ts);
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-    }
-
     setSearchResultIndex(prevIndex);
-    setTimeout(() => scrollToSearchResult(prevIndex), 50);
+    scrollToSearchResult(prevIndex);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +217,7 @@ export function ChatImporter() {
     }
 
     setIsLoading(true);
+    setLoadingProgress(0);
     setError(null);
     setAllChats([]);
     setSelectedChatId(null);
@@ -219,10 +233,15 @@ export function ChatImporter() {
       const zipPromise = JSZip.loadAsync(file);
       const workerPromise = new Promise<any>((resolve, reject) => {
         worker.onmessage = (e) => {
+          if (e.data?.type === 'PROGRESS') {
+            setLoadingProgress(Math.max(0, Math.min(100, Number(e.data.progress) || 0)));
+            return;
+          }
+
           if (e.data?.type === 'SUCCESS' || e.data?.type === 'ERROR') {
+            setLoadingProgress(100);
             resolve(e.data);
           }
-          // Ignore intermediate PROGRESS messages; only the final result should resolve this promise.
         };
         worker.onerror = () => reject(new Error('Failed to parse the ZIP file in the background worker.'));
       });
@@ -257,6 +276,19 @@ export function ChatImporter() {
 
   const triggerFileSelect = () => fileInputRef.current?.click();
 
+  const senderCandidates = useMemo(() => {
+    const names = new Set<string>();
+
+    allChats.forEach(chat => {
+      chat.participants.forEach(participant => {
+        if (participant.name) names.add(participant.name);
+      });
+    });
+
+    if (mainUser) names.add(mainUser);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [allChats, mainUser]);
+
   const filteredChats = useMemo(() => {
     if (!debouncedSearchTerm) return allChats.map(chat => ({ ...chat, matchCount: 0 }));
     const term = debouncedSearchTerm.toLowerCase();
@@ -267,11 +299,6 @@ export function ChatImporter() {
       })
       .filter(chat => chat.titleMatch);
   }, [allChats, debouncedSearchTerm]);
-
-  const filteredMessages = useMemo(() => {
-    if (!selectedChat || !activeMessages.length || !messageSearchTerm) return activeMessages || [];
-    return activeMessages.filter(msg => msg.content && msg.content.toLowerCase().includes(messageSearchTerm.toLowerCase()));
-  }, [selectedChat, activeMessages, messageSearchTerm]);
 
   const renderInitialView = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-center p-4">
@@ -294,9 +321,22 @@ export function ChatImporter() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center bg-black">
+      <div className="flex flex-col items-center justify-center min-h-screen text-center bg-black px-4">
         <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
-        <p className="mt-4 text-gray-400">Extracting all conversations...<br />This may take a moment for large files.</p>
+        <p className="mt-4 text-gray-300 font-medium">Preparing your archive</p>
+        <p className="mt-1 text-sm text-gray-500">Everything stays in your browser.</p>
+        <div className="mt-6 w-full max-w-sm">
+          <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-[width] duration-200"
+              style={{ width: loadingProgress + '%' }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-gray-500">
+            <span>Indexing conversations</span>
+            <span>{loadingProgress}%</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -329,6 +369,25 @@ export function ChatImporter() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto space-y-[2px] p-2">
+          <div className="mx-1 mb-2 rounded-xl border border-[#262626] bg-surface-container-low p-3">
+            <label htmlFor="main-user" className="text-xs font-semibold text-on-surface">
+              Message alignment
+            </label>
+            <select
+              id="main-user"
+              value={mainUser || ''}
+              onChange={(event) => setMainUser(event.target.value || null)}
+              className="mt-2 h-9 w-full rounded-lg border border-[#363636] bg-surface-container-high px-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {senderCandidates.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <p className="mt-2 text-[11px] leading-relaxed text-on-surface-variant">
+              Used only to place your messages on the right side.
+            </p>
+          </div>
+
           {filteredChats.map(chat => (
             <ChatListItem
               key={chat.id}
@@ -382,7 +441,7 @@ export function ChatImporter() {
                         "text-[12px] whitespace-nowrap font-medium min-w-[50px] text-right",
                         searchResults.length === 0 && "text-red-400"
                       )}>
-                        {searchResults.length > 0 ? `${searchResultIndex + 1}/${searchResults.length.toLocaleString()}` : 'No results'}
+                        {!searchIndexReady ? 'Indexing…' : searchResults.length > 0 ? `${searchResultIndex + 1}/${searchResults.length.toLocaleString()}` : 'No results'}
                       </span>
                       <div className="w-[1px] h-full bg-zinc-700 mx-1" />
                       <div className="flex items-center">
@@ -420,52 +479,42 @@ export function ChatImporter() {
                 )}
               </div>
             </div>
-            <div
-              ref={scrollRef}
-              className="flex-1 p-4 overflow-y-auto space-y-1 scroll-smooth z-10 pr-6"
-              onScroll={(e) => {
-                const target = e.currentTarget;
-                // If we scroll near the top, load more messages
-                if (target.scrollTop < 500 && visibleCount < activeMessages.length) {
-                  setVisibleCount(prev => Math.min(prev + 100, activeMessages.length));
-                }
-              }}
-            >
+            <div className="flex-1 min-h-0 z-10">
               {parseWarning && !isParsingMessages && (
-                <Alert className="mb-3 border-amber-500/20 bg-amber-500/5 text-amber-100">
+                <Alert className="mx-4 mt-3 border-amber-500/20 bg-amber-500/5 text-amber-100">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Some messages could not be read</AlertTitle>
                   <AlertDescription>{parseWarning}</AlertDescription>
                 </Alert>
               )}
+
               {isParsingMessages ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
+                <div className="flex h-full flex-col items-center justify-center gap-2">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   <p className="text-sm text-muted-foreground">Loading messages...</p>
                 </div>
               ) : (
-                (() => {
-                  let lastDate: string | null = null;
-                  let lastSender: string | null = null;
-
-                  // Show newest messages first (at the bottom)
-                  // So we slice from the end
-                  const messagesToRender = activeMessages.slice(-visibleCount);
-
-                  return messagesToRender.map((msg, index, arr) => {
+                <VirtualMessageList
+                  key={selectedChatId}
+                  ref={virtualListRef}
+                  className="h-full overflow-y-auto p-4 pr-6 scroll-smooth"
+                  items={activeMessages}
+                  initialItemIndex={activeMessages.length - 1}
+                  estimatedItemHeight={78}
+                  overscan={10}
+                  getItemKey={(msg) => msg.id}
+                  renderItem={(msg, index) => {
+                    const previousMessage = activeMessages[index - 1];
+                    const nextMessage = activeMessages[index + 1];
                     const messageDate = new Date(msg.timestamp_ms).toDateString();
-                    const showDateDivider = messageDate !== lastDate;
-                    lastDate = messageDate;
-
+                    const previousDate = previousMessage ? new Date(previousMessage.timestamp_ms).toDateString() : null;
+                    const nextDate = nextMessage ? new Date(nextMessage.timestamp_ms).toDateString() : null;
+                    const showDateDivider = index === 0 || messageDate !== previousDate;
                     const isMainUser = msg.sender_name === mainUser;
-                    const isFirstInGroup = showDateDivider || lastSender !== msg.sender_name;
-                    lastSender = msg.sender_name;
+                    const isFirstInGroup = showDateDivider || !previousMessage || previousMessage.sender_name !== msg.sender_name;
+                    const isLastInGroup = !nextMessage || nextMessage.sender_name !== msg.sender_name || nextDate !== messageDate;
 
-                    const nextMsg = arr[index + 1];
-                    const nextDate = nextMsg ? new Date(nextMsg.timestamp_ms).toDateString() : null;
-                    const isLastInGroup = !nextMsg || nextMsg.sender_name !== msg.sender_name || nextDate !== messageDate;
-
-                    const isSystemMessage = msg.type === "Generic" && msg.content && (
+                    const isSystemMessage = msg.type === "Generic" && !!msg.content && (
                       msg.content.includes(" named the group ") ||
                       msg.content.includes(" joined the group") ||
                       msg.content.includes(" left the group") ||
@@ -473,19 +522,29 @@ export function ChatImporter() {
                       msg.content.includes(" set the nickname for ") ||
                       msg.content.includes(" set your nickname to ") ||
                       msg.content.includes(" deleted a collection") ||
-                      msg.content.includes(" removed ") && msg.content.includes(" from the group")
+                      (msg.content.includes(" removed ") && msg.content.includes(" from the group"))
                     );
 
-                    const isLastMessage = index === messagesToRender.length - 1;
+                    const isLastMessage = index === activeMessages.length - 1;
                     const isSearchResult = searchResults.includes(msg.id);
                     const isActiveSearchResult = isSearchResult && searchResults[searchResultIndex] === msg.id;
                     const showSeenStatus = isMainUser && isLastMessage && selectedChat.participantCount === 2;
 
                     return (
-                      <div key={msg.id} ref={(el) => { if (el) messageRefs.current.set(msg.id, el) }}
-                        className={cn("transition-colors rounded-lg", isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]")}>
+                      <div
+                        ref={(element) => {
+                          if (element) messageRefs.current.set(msg.id, element);
+                          else messageRefs.current.delete(msg.id);
+                        }}
+                        className={cn(
+                          "transition-colors rounded-lg",
+                          isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                        )}
+                      >
                         {showDateDivider && <DateDivider timestamp_ms={msg.timestamp_ms} />}
-                        {isSystemMessage ? <SystemMessage content={msg.content!} /> : (
+                        {isSystemMessage ? (
+                          <SystemMessage content={msg.content!} />
+                        ) : (
                           <MessageBubble
                             message={msg}
                             isMainUser={isMainUser}
@@ -505,11 +564,9 @@ export function ChatImporter() {
                         )}
                       </div>
                     );
-                  });
-                })()
+                  }}
+                />
               )}
-              {/* Invisible anchor for scrolling to bottom */}
-              <div ref={messagesEndRef} className="h-0 w-full" />
             </div>
             <div className="p-4 z-10 bg-background">
               <div className="flex items-center gap-3 bg-surface-container-high rounded-full px-4 py-2 border border-[#262626]">

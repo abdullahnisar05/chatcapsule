@@ -14,7 +14,7 @@ import Twemoji from 'react-twemoji';
 import { cn, isEmojiOnly, escapeRegex, getInitials } from '@/lib/utils';
 import { Message, MediaFile, Reaction } from '@/types/chat';
 import { useBlobUrl, useBlobUrls } from '@/hooks/use-blob-urls';
-import { useInView } from '@/components/chat-importer';
+import { useInView } from '@/hooks/use-in-view';
 
 // --- Helper Components ---
 
