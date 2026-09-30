@@ -54,6 +54,8 @@ export const ChatHeader = React.memo(function ChatHeader({
   onPrevMatch,
   onNextMatch,
   onCloseSearch,
+  onExport,
+  exportDisabled,
 }: ChatHeaderProps) {
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
