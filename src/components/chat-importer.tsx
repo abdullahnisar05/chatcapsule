@@ -504,13 +504,6 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
               </div>
             )}
 
-            {false && importWarning && (
-              <Alert className="mx-4 mt-3 border-amber-500/30 bg-amber-500/10 text-amber-100" role="status">
-                <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                <AlertTitle>Archive warning</AlertTitle>
-                <AlertDescription>{importWarning}</AlertDescription>
-              </Alert>
-            )}
 
             <ChatTimeline
               chat={selectedChat}
