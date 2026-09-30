@@ -29,6 +29,7 @@ import { MediaDisplay, LazyMediaDisplay } from './chat/media-display';
 import { MessageBubble } from './chat/message-bubble';
 import { Lightbox } from './chat/lightbox';
 import { ChatListItem } from './chat/chat-list-item';
+import { VirtualMessageList, VirtualMessageListHandle } from './chat/virtual-message-list';
 
 // --- Custom Hooks ---
 /**
@@ -79,22 +80,12 @@ export function ChatImporter() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const virtualListRef = useRef<VirtualMessageListHandle>(null);
 
   const selectedChat = useMemo(() => allChats.find(c => c.id === selectedChatId), [allChats, selectedChatId]);
 
   // USE MODULAR LOADER HOOK
   const { activeMessages, isParsingMessages, parseWarning } = useChatLoader(selectedChat);
-
-  // Load messages on-demand when chat selection changes
-  useEffect(() => {
-    if (selectedChat) {
-      setVisibleCount(100); // Reset visible count on new chat switch
-    }
-  }, [selectedChatId]);
-
-  // Search ALL messages for accurate total count
-  const visibleMessages = useMemo(() => activeMessages.slice(-visibleCount), [activeMessages, visibleCount]);
 
   useEffect(() => {
     if (!selectedChat || !activeMessages.length || !messageSearchTerm) {
@@ -103,95 +94,59 @@ export function ChatImporter() {
       return;
     }
 
+    const normalizedTerm = messageSearchTerm.toLowerCase();
     const matches = activeMessages
-      .filter(msg => msg.content && msg.content.toLowerCase().includes(messageSearchTerm.toLowerCase()))
+      .filter(msg => msg.content?.toLowerCase().includes(normalizedTerm))
       .map(msg => msg.id);
 
     setSearchResults(matches);
     setSearchResultIndex(matches.length > 0 ? matches.length - 1 : -1);
   }, [selectedChat, activeMessages, messageSearchTerm]);
 
-  // Reliable Auto-scroll to bottom on chat open
-  useEffect(() => {
-    if (!selectedChat || isParsingMessages || messageSearchTerm || visibleCount > 100) return;
+  const flashMessage = (id: string) => {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
 
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-    };
-
-    // Use rAF + timeout to ensure DOM paints and lazy elements have hydrated their min-heights
-    const frame = requestAnimationFrame(() => {
-      setTimeout(scrollToBottom, 50);
-      setTimeout(scrollToBottom, 200); // Failsafe for slower image loads that shift layout
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [activeMessages.length, isParsingMessages, selectedChatId]);
+    el.classList.add('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
+    window.setTimeout(() => {
+      el.classList.remove('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
+    }, 2000);
+  };
 
   const handleReplyClick = (timestamp: number) => {
-    const highlight = () => {
-      const el = messageRefs.current.get(String(timestamp));
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.classList.add('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
-      setTimeout(() => {
-        el?.classList.remove('animate-pulse', 'bg-blue-500/20', 'rounded-lg');
-      }, 2000);
-    };
+    const targetIndex = activeMessages.findIndex(m => m.timestamp_ms === timestamp);
+    if (targetIndex === -1) return;
 
-    // The reply target may be older than what's currently rendered (only the
-    // newest `visibleCount` messages are mounted), so expand the visible
-    // range before trying to scroll to it.
-    const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === timestamp);
-    if (msgIndexInAll === -1) return;
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-      setTimeout(highlight, 100);
-    } else {
-      highlight();
-    }
+    const target = activeMessages[targetIndex];
+    virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
+    window.setTimeout(() => flashMessage(target.id), 250);
   };
 
   const scrollToSearchResult = (index: number) => {
-    if (index >= 0 && index < searchResults.length) {
-      const timestamp = searchResults[index];
-      const el = messageRefs.current.get(timestamp);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+    if (index < 0 || index >= searchResults.length) return;
+
+    const id = searchResults[index];
+    const targetIndex = activeMessages.findIndex(message => message.id === id);
+    if (targetIndex === -1) return;
+
+    virtualListRef.current?.scrollToIndex(targetIndex, { align: 'center', behavior: 'smooth' });
+    window.setTimeout(() => flashMessage(id), 250);
   };
 
   const goToNextMatch = () => {
     if (searchResults.length === 0) return;
+
     const nextIndex = (searchResultIndex + 1) % searchResults.length;
-    const id = searchResults[nextIndex];
-
-    // Auto-expand visible messages if match is beyond current view
-    const msgIndexInAll = activeMessages.findIndex(m => m.id === id);
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-    }
-
     setSearchResultIndex(nextIndex);
-    // Use a small timeout to allow the list to re-render if visibleCount changed
-    setTimeout(() => scrollToSearchResult(nextIndex), 50);
+    scrollToSearchResult(nextIndex);
   };
 
   const goToPrevMatch = () => {
     if (searchResults.length === 0) return;
+
     const prevIndex = (searchResultIndex - 1 + searchResults.length) % searchResults.length;
-    const id = searchResults[prevIndex];
-
-    const msgIndexInAll = activeMessages.findIndex(m => m.timestamp_ms === ts);
-    const neededFromEnd = activeMessages.length - msgIndexInAll;
-    if (neededFromEnd > visibleCount) {
-      setVisibleCount(Math.min(activeMessages.length, neededFromEnd + 50));
-    }
-
     setSearchResultIndex(prevIndex);
-    setTimeout(() => scrollToSearchResult(prevIndex), 50);
+    scrollToSearchResult(prevIndex);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
