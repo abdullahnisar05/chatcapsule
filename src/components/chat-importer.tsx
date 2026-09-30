@@ -212,6 +212,19 @@ export function ChatImporter() {
 
   const triggerFileSelect = () => fileInputRef.current?.click();
 
+  const senderCandidates = useMemo(() => {
+    const names = new Set<string>();
+
+    allChats.forEach(chat => {
+      chat.participants.forEach(participant => {
+        if (participant.name) names.add(participant.name);
+      });
+    });
+
+    if (mainUser) names.add(mainUser);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [allChats, mainUser]);
+
   const filteredChats = useMemo(() => {
     if (!debouncedSearchTerm) return allChats.map(chat => ({ ...chat, matchCount: 0 }));
     const term = debouncedSearchTerm.toLowerCase();
