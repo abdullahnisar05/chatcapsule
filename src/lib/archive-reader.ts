@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { chatExportSchema } from './archive-schemas';
 import { fixEncoding } from './utils';
-import { Chat } from '@/types/chat';
+import { Chat } from '../types/chat';
 
 type ProgressCallback = (progress: number) => void;
 
