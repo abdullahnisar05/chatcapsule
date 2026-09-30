@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Chat, MediaFile } from '@/types/chat';
 import { useChatLoader } from '@/hooks/use-chat-loader';
 import { buildChatIndex } from '@/lib/archive-reader';
+import { isAbortError } from '@/lib/abort';
 import { clearBlobCache } from '@/lib/blob-cache';
 import { DEMO_CHAT, DEMO_MESSAGES, DEMO_USER } from '@/lib/demo-data';
 import { ChatSidebar } from './chat/chat-sidebar';
@@ -44,6 +45,7 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   const virtualListRef = useRef<VirtualMessageListHandle>(null);
   const searchWorkerRef = useRef<Worker | null>(null);
   const searchRequestRef = useRef(0);
+  const importControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 150);
@@ -51,7 +53,10 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   }, [searchTerm]);
 
   useEffect(() => {
-    return () => clearBlobCache();
+    return () => {
+      importControllerRef.current?.abort();
+      clearBlobCache();
+    };
   }, []);
 
   const selectedChat = useMemo(
@@ -251,13 +256,15 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
   };
 
   const processFile = async (file: File) => {
-
     if (!file.name.toLowerCase().endsWith('.zip')) {
       setError('Please upload a valid Instagram chat .zip file.');
       return;
     }
 
-    clearBlobCache();
+    importControllerRef.current?.abort();
+    const controller = new AbortController();
+    importControllerRef.current = controller;
+
     setIsLoading(true);
     setLoadingProgress(0);
     setError(null);
@@ -267,12 +274,24 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
 
     try {
       const zipInstance = await JSZip.loadAsync(file);
+      if (controller.signal.aborted) return;
+
+      const { chats, frequentSender, warnings } = await buildChatIndex(
+        zipInstance,
+        setLoadingProgress,
+        { signal: controller.signal },
+      );
+
+      if (controller.signal.aborted) return;
+
+      clearBlobCache();
       setZip(zipInstance);
-      const { chats, frequentSender, warnings } = await buildChatIndex(zipInstance, setLoadingProgress);
 
       if (warnings.length > 0) {
         const preview = warnings.slice(0, 2).join(', ');
-        const suffix = warnings.length > 2 ? ' and ' + (warnings.length - 2) + ' more' : '';
+        const suffix = warnings.length > 2
+          ? ' and ' + (warnings.length - 2) + ' more'
+          : '';
         setImportWarning('Some conversations could not be indexed: ' + preview + suffix + '.');
       }
 
@@ -280,10 +299,16 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
       setAllChats(chats);
       setSelectedChatId(chats[0]?.id ?? null);
     } catch (cause: unknown) {
-      const message = cause instanceof Error ? cause.message : 'An unexpected error occurred while reading the file.';
+      if (isAbortError(cause) || controller.signal.aborted) return;
+
+      const message = cause instanceof Error
+        ? cause.message
+        : 'An unexpected error occurred while reading the file.';
       setError(message);
-      setZip(null);
     } finally {
+      if (importControllerRef.current === controller) {
+        importControllerRef.current = null;
+      }
       setIsLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -299,6 +324,10 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     setIsDragActive(false);
     const file = event.dataTransfer.files?.[0];
     if (file) void processFile(file);
+  };
+
+  const cancelImport = () => {
+    importControllerRef.current?.abort();
   };
 
   const triggerFileSelect = () => fileInputRef.current?.click();
@@ -344,6 +373,9 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
         <Loader2 className="h-16 w-16 animate-spin text-blue-500" aria-hidden="true" />
         <p className="mt-4 text-gray-300 font-medium">Preparing your archive</p>
         <p className="mt-1 text-sm text-gray-500">Everything stays in your browser.</p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={cancelImport}>
+          Cancel import
+        </Button>
         <div className="mt-6 w-full max-w-sm">
           <div className="h-2 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
             <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: loadingProgress + '%' }} />
