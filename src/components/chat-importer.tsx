@@ -40,6 +40,7 @@ export function ChatImporter() {
   const [mainUser, setMainUser] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showHeaderSearch, setShowHeaderSearch] = useState(false);
@@ -135,6 +136,7 @@ export function ChatImporter() {
     }
 
     setIsLoading(true);
+    setLoadingProgress(0);
     setError(null);
     setAllChats([]);
     setSelectedChatId(null);
@@ -150,10 +152,15 @@ export function ChatImporter() {
       const zipPromise = JSZip.loadAsync(file);
       const workerPromise = new Promise<any>((resolve, reject) => {
         worker.onmessage = (e) => {
+          if (e.data?.type === 'PROGRESS') {
+            setLoadingProgress(Math.max(0, Math.min(100, Number(e.data.progress) || 0)));
+            return;
+          }
+
           if (e.data?.type === 'SUCCESS' || e.data?.type === 'ERROR') {
+            setLoadingProgress(100);
             resolve(e.data);
           }
-          // Ignore intermediate PROGRESS messages; only the final result should resolve this promise.
         };
         worker.onerror = () => reject(new Error('Failed to parse the ZIP file in the background worker.'));
       });
@@ -225,11 +232,6 @@ export function ChatImporter() {
       .filter(chat => chat.titleMatch);
   }, [allChats, debouncedSearchTerm]);
 
-  const filteredMessages = useMemo(() => {
-    if (!selectedChat || !activeMessages.length || !messageSearchTerm) return activeMessages || [];
-    return activeMessages.filter(msg => msg.content && msg.content.toLowerCase().includes(messageSearchTerm.toLowerCase()));
-  }, [selectedChat, activeMessages, messageSearchTerm]);
-
   const renderInitialView = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-center p-4">
       <Card className="w-full max-w-lg shadow-2xl bg-gray-900 border-gray-700">
@@ -251,9 +253,22 @@ export function ChatImporter() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center bg-black">
+      <div className="flex flex-col items-center justify-center min-h-screen text-center bg-black px-4">
         <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
-        <p className="mt-4 text-gray-400">Extracting all conversations...<br />This may take a moment for large files.</p>
+        <p className="mt-4 text-gray-300 font-medium">Preparing your archive</p>
+        <p className="mt-1 text-sm text-gray-500">Everything stays in your browser.</p>
+        <div className="mt-6 w-full max-w-sm">
+          <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-[width] duration-200"
+              style={{ width: loadingProgress + '%' }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-gray-500">
+            <span>Indexing conversations</span>
+            <span>{loadingProgress}%</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -455,8 +470,7 @@ export function ChatImporter() {
                         }}
                         className={cn(
                           "transition-colors rounded-lg",
-                          isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]",
-                          "contain-layout contain-paint"
+                          isActiveSearchResult && "bg-blue-500/10 ring-1 ring-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                         )}
                       >
                         {showDateDivider && <DateDivider timestamp_ms={msg.timestamp_ms} />}
