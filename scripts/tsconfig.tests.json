@@ -6,7 +6,10 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "outDir": "../.test-build",
     "rootDir": "..",
     "noEmitOnError": true
@@ -15,6 +18,8 @@
     "./unit-tests.ts",
     "../src/lib/utils.ts",
     "../src/lib/archive-schemas.ts",
-    "../src/lib/search-index.ts"
+    "../src/lib/search-index.ts",
+    "../src/lib/archive-reader.ts",
+    "../src/types/chat.ts"
   ]
 }
