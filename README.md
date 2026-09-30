@@ -12,7 +12,7 @@ ChatCapsule turns that archive into a readable, searchable timeline without requ
 
 ### Core flow
 
-Instagram data export → ZIP file → Browser / Web Worker → Normalized archive → Searchable conversation viewer
+Instagram data export → ZIP file → Browser → Single-reader archive index → Searchable conversation viewer
 
 ## Privacy architecture
 
@@ -39,14 +39,16 @@ ChatCapsule is designed around a local-first model:
 - Responsive desktop/mobile conversation layout
 - Media lightbox and voice-message playback
 - Graceful parser warnings when individual archive files cannot be read
+- Automated TypeScript unit tests and production route smoke tests in CI
 
 ## Project structure
 
 src/app — Next.js routes and metadata
 src/components — landing page, archive viewer, chat UI, reusable UI
 src/hooks — archive loading, lazy media, viewport utilities
-src/lib — parser worker, normalization utilities, site metadata
+src/lib — archive reader, search worker/index, normalization utilities
 src/types — internal archive/message models
+scripts — type-compiled unit tests and production smoke tests
 
 ## Running locally
 
@@ -55,7 +57,9 @@ npm run dev
 
 Useful checks:
 npm run typecheck
+npm run test:unit
 npm run build
+npm run test:smoke
 
 ## Supported archive behavior
 
@@ -65,13 +69,11 @@ Because Instagram can change its export format, the parser is defensive: unsuppo
 
 ## Roadmap
 
-- Automated unit/integration/E2E tests
-- Archive statistics
-- Better import progress and archive validation
-- Explicit current-account selection for reliable message alignment
+- Regenerate and verify dependency lockfile after framework security updates
 - Accessibility and keyboard-navigation pass
-- Accessibility and keyboard-navigation pass
+- Split the archive viewer into smaller feature components
 - Export selected conversations
+- Performance benchmarks for very large archives
 
 ## Portfolio note
 
