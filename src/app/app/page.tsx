@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ChatImporter } from '@/components/chat-importer';
+import { ChatErrorBoundary } from '@/components/chat/chat-error-boundary';
 
 export const metadata: Metadata = {
   title: 'Open Your Chats',
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function AppPage() {
-  return <ChatImporter />;
+  return <ChatErrorBoundary><ChatImporter /></ChatErrorBoundary>;
 }
