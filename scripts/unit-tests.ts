@@ -153,7 +153,7 @@ testAsync('fails clearly when no readable conversations remain', async () => {
 
 testAsync('loads and orders messages across archive parts', async () => {
   const zip = new JSZip();
-  const makeMessageFile = (number, messages) => {
+  const makeMessageFile = (number: number, messages: unknown[]) => {
     zip.file(
       'your_activity/inbox/alex_rivera/message_' + number + '.json',
       JSON.stringify({
