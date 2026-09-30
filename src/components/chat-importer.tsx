@@ -32,27 +32,6 @@ import { ChatListItem } from './chat/chat-list-item';
 import { VirtualMessageList, VirtualMessageListHandle } from './chat/virtual-message-list';
 
 // --- Custom Hooks ---
-/**
- * @deprecated Use shared hooks where possible. Keeping exported for transition.
- */
-export const useInView = (options?: IntersectionObserverInit) => {
-  const [isInView, setIsInView] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsInView(entry.isIntersecting);
-    }, options);
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [options]);
-
-  return { ref, isInView };
-};
-
-
-
 
 // --- Main Component ---
 export function ChatImporter() {
