@@ -1,6 +1,12 @@
 import { Chat, Message } from '../types/chat';
 import { fixMessageEncoding } from './utils';
 import { chatExportSchema } from './archive-schemas';
+import { throwIfAborted } from './abort';
+
+export type MessageLoadOptions = {
+  signal?: AbortSignal;
+  onProgress?: (progress: number) => void;
+};
 
 export type MessageLoadResult = {
   messages: Message[];
@@ -9,18 +15,21 @@ export type MessageLoadResult = {
 
 export async function loadChatMessages(
   selectedChat: Chat,
-  options: { isCancelled?: () => boolean } = {},
+  options: MessageLoadOptions = {},
 ): Promise<MessageLoadResult> {
   const chatMessages: Message[] = [];
   const warnings: string[] = [];
+
+  throwIfAborted(options.signal);
 
   const files = [...selectedChat.messageFiles].sort((a, b) =>
     parseInt(a.name.match(/message_(\d+)\.json/)?.[1] || '0', 10) -
     parseInt(b.name.match(/message_(\d+)\.json/)?.[1] || '0', 10)
   );
 
-  for (const file of files) {
-    if (options.isCancelled?.()) return { messages: [], warnings: [] };
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+    const file = files[fileIndex];
+    throwIfAborted(options.signal);
 
     try {
       const content = await file.async('string');
@@ -31,25 +40,40 @@ export async function loadChatMessages(
         continue;
       }
 
-      parsedExport.data.messages.forEach((rawMessage, index) => {
+      const rawMessages = parsedExport.data.messages;
+      for (let messageIndex = 0; messageIndex < rawMessages.length; messageIndex += 1) {
+        if (messageIndex % 250 === 0) {
+          throwIfAborted(options.signal);
+          const fileProgress = rawMessages.length
+            ? messageIndex / rawMessages.length
+            : 1;
+          options.onProgress?.(
+            Math.floor(((fileIndex + fileProgress) / files.length) * 100),
+          );
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+
+        const rawMessage = rawMessages[messageIndex];
         const normalized = fixMessageEncoding(rawMessage);
-        if (!normalized || typeof normalized !== 'object') return;
+        if (!normalized || typeof normalized !== 'object') continue;
 
         chatMessages.push({
           ...normalized,
-          id: selectedChat.id + ':' + file.name + ':' + index,
+          id: selectedChat.id + ':' + file.name + ':' + messageIndex,
           type: normalized.type ?? 'Generic',
           is_unsent: normalized.is_unsent ?? false,
         } as Message);
-      });
+      }
     } catch (error) {
       console.warn('Failed to parse ' + file.name, error);
       warnings.push(file.name);
     }
 
+    options.onProgress?.(Math.floor(((fileIndex + 1) / files.length) * 100));
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
+  throwIfAborted(options.signal);
   chatMessages.sort((a, b) => {
     if (a.timestamp_ms !== b.timestamp_ms) return a.timestamp_ms - b.timestamp_ms;
     return a.id.localeCompare(b.id);
