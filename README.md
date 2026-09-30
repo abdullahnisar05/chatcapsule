@@ -65,7 +65,6 @@ Because Instagram can change its export format, the parser is defensive: unsuppo
 
 ## Roadmap
 
-- Global archive search across conversations
 - Demo archive mode for portfolio visitors
 - Archive statistics
 - Better import progress and archive validation
