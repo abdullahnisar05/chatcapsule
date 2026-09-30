@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   ShieldCheck, Search, Image as ImageIcon, Mic, MessagesSquare,
@@ -13,7 +12,7 @@ const STRUCTURED_DATA = {
   '@graph': [
     {
       '@type': 'Organization',
-      '@id': `${SITE_URL}/#kluvox`,
+      '@id': `${SITE_URL}/#chatcapsule`,
       name: 'ChatCapsule',
     },
     {
@@ -273,8 +272,7 @@ export function LandingPage() {
           Made with{' '}
           <span aria-label="love" role="img" className="text-red-500">&hearts;</span> by{' '}
           <span className="inline-flex items-center gap-1.5 font-semibold text-on-surface">
-            <Image
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-violet-500 text-[10px] font-bold text-white">C</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-violet-500 text-[10px] font-bold text-white">C</span>
             ChatCapsule
           </span>
         </div>
