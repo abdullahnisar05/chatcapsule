@@ -262,10 +262,6 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
     setLoadingProgress(0);
     setError(null);
     setImportWarning(null);
-    setAllChats([]);
-    setSelectedChatId(null);
-    setMainUser(null);
-    setZip(null);
     setMessageSearchTerm('');
     setSearchTerm('');
 
