@@ -50,8 +50,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the implementation boundaries and t
 - Per-archive blob URL cache with explicit cleanup
 - Keyboard-accessible search, replies, media, playback, and mobile navigation
 - Recoverable viewer error boundary
-- Automated typecheck, unit tests, production build, and route smoke tests
+- Automated typecheck, unit tests, production build, route smoke tests, and Chromium E2E coverage
 - Reproducible 100k/250k/500k search-core benchmark
+- Browser E2E coverage for demo navigation, archive upload, in-chat search, and a 5,000-message conversation
 
 ## Verification
 
@@ -64,6 +65,11 @@ npm run test:unit
 npm run build
 npm run test:smoke
 npm run benchmark:search
+
+# Browser E2E (installs Playwright without changing the lockfile)
+npm install --no-save --package-lock=false @playwright/test@1.63.0
+npx playwright install chromium
+npm run test:e2e
 ```
 
 The search benchmark reports deterministic dataset size, match count, median query time, and process heap usage. These numbers are machine-dependent and should be used for regression tracking rather than universal performance claims.
@@ -82,6 +88,7 @@ Instagram can change its export format. The parser therefore treats archive cont
 - src/lib — archive reader, validation, search worker/index, normalization
 - src/types — internal archive/message models
 - scripts — type-compiled unit tests, production smoke test, search benchmark
+- e2e — browser-level product flows
 
 ## Security
 
