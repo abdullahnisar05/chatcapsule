@@ -1,7 +1,4 @@
-type SearchEntry = {
-  id: string;
-  text: string;
-};
+import { searchEntries, type SearchEntry } from './search-index';
 
 type BuildMessage = {
   type: 'BUILD';
@@ -28,25 +25,10 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   }
 
   if (message.type === 'SEARCH') {
-    const query = message.query.trim().toLowerCase();
-
-    if (!query) {
-      self.postMessage({
-        type: 'RESULTS',
-        requestId: message.requestId,
-        ids: [],
-      });
-      return;
-    }
-
-    const ids = entries
-      .filter(entry => entry.text.includes(query))
-      .map(entry => entry.id);
-
     self.postMessage({
       type: 'RESULTS',
       requestId: message.requestId,
-      ids,
+      ids: searchEntries(entries, message.query),
     });
   }
 };
