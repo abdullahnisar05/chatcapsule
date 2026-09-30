@@ -10,7 +10,8 @@
     "test:unit": "tsc -p scripts/tsconfig.tests.json && node .test-build/scripts/unit-tests.js",
     "test:smoke": "npm run build && node scripts/smoke-test.mjs",
     "benchmark:search": "npm run test:unit && node scripts/search-benchmark.mjs",
-    "check": "npm run typecheck && npm run test:unit && npm run build"
+    "check": "npm run typecheck && npm run test:unit && npm run build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
