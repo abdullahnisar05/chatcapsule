@@ -30,6 +30,9 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Search benchmark
+        run: npm run benchmark:search
+
       - name: Production build
         run: npm run build
 

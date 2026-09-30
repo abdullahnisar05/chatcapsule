@@ -127,9 +127,14 @@ export function LandingPage() {
             </div>
             <span className="font-headline text-lg font-semibold tracking-tight">ChatCapsule</span>
           </div>
-          <Button asChild size="sm">
-            <Link href="/app">Try ChatCapsule</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/engineering" className="hidden text-sm text-on-surface-variant transition-colors hover:text-white sm:inline">
+              Engineering
+            </Link>
+            <Button asChild size="sm">
+              <Link href="/app">Try ChatCapsule</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -167,6 +172,9 @@ export function LandingPage() {
                   Explore the demo
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
+              </Button>
+              <Button asChild size="lg" variant="ghost" className="w-full text-on-surface-variant sm:w-auto">
+                <Link href="/engineering">See the engineering <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             </div>
           </div>
@@ -266,7 +274,10 @@ export function LandingPage() {
       <footer className="border-t border-[#262626] px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-sm text-on-surface-variant sm:flex-row">
           <span>ChatCapsule &mdash; not affiliated with Instagram or Meta.</span>
-          <span>All processing happens locally in your browser.</span>
+          <div className="flex items-center gap-4">
+            <Link href="/engineering" className="transition-colors hover:text-white">Engineering</Link>
+            <span>All processing happens locally in your browser.</span>
+          </div>
         </div>
         <div className="mx-auto mt-6 flex max-w-6xl items-center justify-center gap-1 border-t border-[#262626] pt-6 text-sm text-on-surface-variant">
           Made with{' '}

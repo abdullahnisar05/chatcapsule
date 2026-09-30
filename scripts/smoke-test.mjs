@@ -34,11 +34,13 @@ async function fetchWithRetry(url, timeoutMs = 60000) {
 try {
   const root = await fetchWithRetry('http://127.0.0.1:' + port + '/');
   const demo = await fetchWithRetry('http://127.0.0.1:' + port + '/demo');
+  const engineering = await fetchWithRetry('http://127.0.0.1:' + port + '/engineering');
 
   if (!root.ok) throw new Error('/ returned HTTP ' + root.status);
   if (!demo.ok) throw new Error('/demo returned HTTP ' + demo.status);
+  if (!engineering.ok) throw new Error('/engineering returned HTTP ' + engineering.status);
 
-  const [rootHtml, demoHtml] = await Promise.all([root.text(), demo.text()]);
+  const [rootHtml, demoHtml, engineeringHtml] = await Promise.all([root.text(), demo.text(), engineering.text()]);
 
   if (!rootHtml.includes('ChatCapsule')) {
     throw new Error('Root route is missing the ChatCapsule brand marker.');
@@ -48,8 +50,13 @@ try {
     throw new Error('Demo route is missing the demo marker.');
   }
 
+  if (!engineeringHtml.toLowerCase().includes('engineering case study')) {
+    throw new Error('Engineering route is missing the case study marker.');
+  }
+
   console.log('✓ / returns 200 and renders ChatCapsule');
   console.log('✓ /demo returns 200 and renders the demo marker');
+  console.log('✓ /engineering returns 200 and renders the case study marker');
 } finally {
   if (!server.killed) {
     server.kill('SIGTERM');

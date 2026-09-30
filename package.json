@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsc -p scripts/tsconfig.tests.json && node .test-build/scripts/unit-tests.js",
     "test:smoke": "npm run build && node scripts/smoke-test.mjs",
+    "benchmark:search": "npm run test:unit && node scripts/search-benchmark.mjs",
     "check": "npm run typecheck && npm run test:unit && npm run build"
   },
   "dependencies": {
