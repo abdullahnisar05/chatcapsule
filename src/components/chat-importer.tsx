@@ -410,6 +410,15 @@ export function ChatImporter({ demo = false }: { demo?: boolean }) {
                   )}
                   {demo && <> · Demo archive</>}
                 </p>
+                {!isParsingMessages && archiveStats.messageCount > 0 && (
+                  <p className="mt-0.5 text-[11px] text-on-surface-variant/70">
+                    {[
+                      archiveStats.photoCount > 0 ? archiveStats.photoCount + ' photos' : '',
+                      archiveStats.videoCount > 0 ? archiveStats.videoCount + ' videos' : '',
+                      archiveStats.voiceCount > 0 ? archiveStats.voiceCount + ' voice notes' : '',
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className={cn("flex items-center bg-zinc-900/90 border border-zinc-800 rounded-lg transition-all px-3 py-1 overflow-hidden",
